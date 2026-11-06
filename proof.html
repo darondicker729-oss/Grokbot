@@ -199,6 +199,28 @@ async function run(){
     try{ const j=await fn(); const n=cnt(j.result); out.push(name+"="+(n===null?"?":n)); if(n>best) best=n; }
     catch(e){ out.push(name+"="+e.message); }
   }
+  // Route 2: Helius getTokenAccounts (all holders), then read delegates of delegated accounts
+  try{
+    let page=1, all=[];
+    while(page<=20){
+      const j=await getJSON(rpcUrl(),{method:"POST",headers:{"Content-Type":"application/json"},
+        body:JSON.stringify({jsonrpc:"2.0",id:1,method:"getTokenAccounts",params:{mint,limit:1000,page}})},45000);
+      if(j.error) throw new Error(j.error.message||"RPC error");
+      const ta=j.result?.token_accounts||[]; all=all.concat(ta);
+      if(ta.length<1000) break; page++;
+    }
+    const withBal=all.filter(a=>Number(a.amount)>0).length;
+    const deleg=all.filter(a=>Number(a.delegated_amount)>0).map(a=>a.address);
+    const byDel={};
+    for(let i=0;i<deleg.length;i+=100){
+      const j=await rpc("getMultipleAccounts",[deleg.slice(i,i+100),{encoding:"jsonParsed"}],45000);
+      for(const v of j.result?.value||[]){ const d=v?.data?.parsed?.info?.delegate; if(d) byDel[d]=(byDel[d]||0)+1; }
+    }
+    const top=Object.entries(byDel).sort((a,b)=>b[1]-a[1])[0];
+    raw.l8_route2={accounts:all.length,holders:withBal,delegated:deleg.length,topDelegate:top||null};
+    out.push("getTokenAccounts="+all.length+" (holders "+withBal+", delegated "+deleg.length+(top?", top delegate "+top[1]:"")+")");
+    if(all.length>best) best=all.length;
+  }catch(e){ out.push("getTokenAccounts="+e.message); }
   const holders4=raw.largest?.result?.value?.length||0;
   raw.l8_count=best;
   const summary="program "+(prog===TOKEN22?"Token-2022":prog===TOKEN?"Token":prog.slice(0,6))+" · "+out.join(", ");
@@ -224,7 +246,8 @@ $("copy").onclick=async()=>{
   try{ await navigator.clipboard.writeText(txt); $("copied").textContent="Copied. Paste it into the chat."; }
   catch{ $("copied").textContent="Copy failed. Screenshot the Results instead."; }
 };
-$("run").onclick=run;
+try{ const s=localStorage.getItem("gb_rpc"); if(s) $("rpc").value=s; }catch{}
+$("run").onclick=()=>{ try{ localStorage.setItem("gb_rpc",$("rpc").value.trim()); }catch{} run(); };
 render();
 </script>
 </body>
