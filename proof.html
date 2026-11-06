@@ -165,7 +165,7 @@ async function run(){
 
   await Promise.all([
     (async()=>{ set("dex","wait","…"); try{ const j=await getJSON("https://api.dexscreener.com/tokens/v1/solana/"+mint); raw.dex=j;
-        const p=Array.isArray(j)?j:[]; const ps=p.filter(x=>x.dexId==="pumpswap"); set("dex","ok",p.length+" pairs, "+ps.length+" pumpswap"); }
+        const p=Array.isArray(j)?j:[]; const ps=p.filter(x=>x.dexId==="pumpswap"); set("dex","ok",p.length+" pairs, "+ps.length+" pumpswap · dexIds: "+([...new Set(p.map(x=>x.dexId))].join(", ")||"none")); }
       catch(e){ set("dex","bad",e.message); } })(),
     (async()=>{ set("rc","wait","…"); try{ const j=await getJSON("https://api.rugcheck.xyz/v1/tokens/"+mint+"/report"); raw.rugcheck=j; set("rc","ok","report received"); }
       catch(e){ set("rc","bad",e.message); } })(),
