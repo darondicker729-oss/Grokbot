@@ -1,0 +1,1677 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Grok Bot">
+<meta name="theme-color" content="#000000">
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="icon-180.png">
+<title>Grok Bot</title>
+<style>
+:root{
+  --bg:#000;--card:#1c1c1e;--card2:#2c2c2e;--fg:#fff;
+  --fg2:rgba(235,235,245,.6);--fg3:rgba(235,235,245,.3);--sep:rgba(84,84,88,.55);
+  --green:#00d35a;--red:#ff453a;--orange:#ff9f0a;--cyan:#64d2ff;--blue:#0a84ff;--yellow:#ffd60a;--pink:#ff6b9a;
+  --display:-apple-system,"SF Pro Display",system-ui,sans-serif;
+  --text:-apple-system,"SF Pro Text",system-ui,sans-serif;
+  --mono:ui-monospace,"SF Mono",Menlo,monospace;
+  color-scheme:dark;
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;height:100%;background:var(--bg);color:var(--fg);font:15px/1.35 var(--text);font-variant-numeric:tabular-nums;-webkit-font-smoothing:antialiased}
+button{font:inherit;color:inherit;background:none;border:0;padding:0;cursor:pointer}
+a{color:inherit;text-decoration:none}
+input,select{font:inherit;color:var(--fg)}
+:focus-visible{outline:2px solid var(--blue);outline-offset:2px}
+.screen{position:fixed;inset:0;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:calc(env(safe-area-inset-top,0px) + 8px) max(16px,env(safe-area-inset-right,0px)) calc(env(safe-area-inset-bottom,0px) + 96px) max(16px,env(safe-area-inset-left,0px))}
+.screen[hidden]{display:none}
+.stack{display:flex;flex-direction:column;gap:16px}
+.row{display:flex;align-items:center;gap:12px}
+.grow{flex:1;min-width:0}
+.sec{color:var(--fg2)} .ter{color:var(--fg3)}
+.small{font-size:13px} .mono{font-family:var(--mono)}
+.green{color:var(--green)} .red{color:var(--red)} .orange{color:var(--orange)} .cyan{color:var(--cyan)} .blue{color:var(--blue)} .yellow{color:var(--yellow)} .pink{color:var(--pink)}
+h2{font:600 20px/1.2 var(--display);margin:8px 0 0}
+.sectionhead{display:flex;align-items:baseline;justify-content:space-between;margin-top:8px}
+.sectionhead h2{margin:0}
+.link{color:var(--blue);min-height:44px;display:inline-flex;align-items:center}
+
+/* navbar */
+.nav{display:flex;align-items:center;gap:8px;min-height:52px}
+.nav .title{font:600 17px var(--text);display:flex;align-items:center;gap:4px;min-height:44px}
+.iconbtn{width:44px;height:44px;display:grid;place-items:center;border-radius:22px;position:relative}
+.iconbtn svg{width:24px;height:24px;stroke:var(--fg);fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.avatar{width:32px;height:32px;border-radius:16px;background:var(--card2);display:grid;place-items:center;font:600 14px var(--text)}
+.dot{position:absolute;top:9px;right:10px;width:9px;height:9px;border-radius:5px;background:var(--green);border:2px solid var(--bg)}
+.errorrow{background:rgba(255,69,58,.14);color:var(--red);border-radius:10px;padding:10px 12px;font-size:13px}
+
+/* balance */
+.balance{display:flex;align-items:flex-start;gap:10px;flex-wrap:wrap}
+.odo{font:700 clamp(54px,17vw,88px)/1 var(--display);letter-spacing:-.02em;display:inline-flex;overflow:hidden;height:1em}
+.odo .d{display:inline-block;height:1em;overflow:hidden;position:relative}
+.odo .col{display:flex;flex-direction:column;transition:transform 600ms cubic-bezier(.2,.8,.2,1)}
+.odo .col span{height:1em;line-height:1em;display:block;text-align:center}
+.pill{display:inline-flex;align-items:center;height:24px;padding:0 10px;border-radius:12px;font:600 13px var(--text)}
+.pill.paper{background:var(--orange);color:#000;margin-top:8px}
+.pill.mult{background:rgba(0,211,90,.16);color:var(--green)}
+.pill.mono{font:500 12px var(--mono)}
+.pill.redp{background:rgba(255,69,58,.16);color:var(--red)} .pill.greenp{background:rgba(0,211,90,.16);color:var(--green)}
+.today{display:flex;align-items:center;gap:10px;font:500 17px var(--text)}
+
+/* chart */
+.chartwrap{position:relative;height:220px;margin:0 -16px}
+.chartwrap canvas{width:100%;height:100%;display:block}
+.chartempty{position:absolute;inset:0;display:grid;place-items:center;color:var(--fg2);font-size:14px}
+.ranges{display:flex;justify-content:space-between}
+.ranges button{min-width:44px;min-height:36px;border-radius:18px;font:600 13px var(--text);color:var(--fg2)}
+.ranges button[aria-pressed="true"]{background:var(--card2);color:var(--fg)}
+
+/* agent cards */
+.carousel{display:flex;gap:12px;overflow-x:auto;scroll-snap-type:x mandatory;margin:0 -16px;padding:0 16px;scrollbar-width:none}
+.carousel::-webkit-scrollbar{display:none}
+.acard{flex:0 0 calc(100vw - 32px);max-width:100%;aspect-ratio:504/470;background:var(--card);border-radius:calc((100vw - 32px) * 42 / 504);padding:20px;scroll-snap-align:center;display:flex;flex-direction:column;gap:10px;overflow:hidden}
+.acard .head{display:flex;align-items:center;justify-content:space-between}
+.acard .name{font:600 15px var(--text)}
+.acard .big{font:700 34px/1.05 var(--display)}
+.feed{display:flex;flex-direction:column;gap:6px;font-size:13px;overflow:hidden;flex:1}
+.feed .f{display:flex;gap:8px;justify-content:space-between}
+.feed .f .n{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.feed .kill .n{color:var(--fg3);text-decoration:line-through;text-decoration-color:var(--red)}
+.feed .kill .r{color:var(--red);white-space:nowrap}
+.strips{display:grid;grid-template-columns:repeat(4,1fr);gap:6px}
+.strips i{height:28px;border-radius:7px;background:var(--card2);display:block;transition:background 150ms}
+.strips i.ok{background:var(--green)} .strips i.bad{background:var(--red)} .strips i.run{background:var(--cyan)}
+.ring{width:130px;height:130px;align-self:center}
+.bar{height:8px;border-radius:4px;background:var(--card2);overflow:hidden}
+.bar i{display:block;height:100%;background:var(--green);width:0;transition:width 1.2s linear}
+.pills{display:flex;gap:8px;flex-wrap:wrap}
+.empty{color:var(--fg2);font-size:14px;display:grid;place-items:center;flex:1;text-align:center}
+
+/* lists */
+.list{background:var(--card);border-radius:14px;overflow:hidden}
+.li{display:flex;align-items:center;gap:12px;padding:12px 16px;min-height:60px;width:100%;text-align:left}
+.li+.li{border-top:.5px solid var(--sep)}
+.li .ic{width:36px;height:36px;border-radius:18px;display:grid;place-items:center;flex:none;font:700 14px var(--text)}
+.ic.bought{background:rgba(10,132,255,.18);color:var(--blue)} .ic.sold{background:rgba(0,211,90,.18);color:var(--green)}
+.ic.stopped{background:rgba(255,69,58,.18);color:var(--red)} .ic.rejected{background:var(--card2);color:var(--fg2)}
+.li .t{font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.li .s{font-size:13px;color:var(--fg2);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.li .v{text-align:right;font-weight:500;white-space:nowrap}
+
+/* agents tab */
+.agentfull{background:var(--card);border-radius:20px;padding:16px;display:flex;flex-direction:column;gap:12px}
+.status{width:9px;height:9px;border-radius:5px;background:var(--green);display:inline-block}
+.status.off{background:var(--fg3)}
+.switch{width:51px;height:31px;border-radius:16px;background:var(--card2);position:relative;flex:none;transition:background .2s}
+.switch::after{content:"";position:absolute;top:2px;left:2px;width:27px;height:27px;border-radius:14px;background:#fff;transition:transform .2s}
+.switch[aria-checked="true"]{background:var(--green)} .switch[aria-checked="true"]::after{transform:translateX(20px)}
+.switch:disabled{opacity:.4}
+.switchwrap{min-width:51px;min-height:44px;display:grid;place-items:center}
+.dec{display:grid;grid-template-columns:auto 1fr auto;gap:2px 10px;font-size:13px}
+.dec a{color:var(--fg)} .dec .r{color:var(--fg2);text-align:right}
+
+/* account */
+.group{background:var(--card);border-radius:14px;overflow:hidden}
+.gl{font-size:13px;color:var(--fg2);margin:8px 0 -8px 16px}
+.set{padding:12px 16px;display:flex;flex-direction:column;gap:8px}
+.set+.set{border-top:.5px solid var(--sep)}
+.set .top{display:flex;justify-content:space-between;align-items:center;gap:12px}
+.set input[type=range]{width:100%;accent-color:var(--blue);height:32px}
+.set input[type=number],.set input[type=text],.set input[type=password],.set select,.cmd input{background:var(--card2);border:0;border-radius:10px;min-height:44px;padding:0 12px;width:100%}
+.set input[type=number]{width:120px;text-align:right}
+.seg{display:flex;background:var(--card2);border-radius:9px;padding:2px}
+.seg button{flex:1;min-height:36px;border-radius:7px;font:600 14px var(--text);color:var(--fg2)}
+.seg button[aria-pressed="true"]{background:#636366;color:#fff}
+.seg button:disabled{opacity:.4}
+.err{color:var(--red);font-size:13px}
+.btn{min-height:50px;border-radius:14px;background:var(--blue);color:#fff;font:600 17px var(--text);display:flex;align-items:center;justify-content:center;width:100%}
+.btn.buy{background:var(--green);color:#000} .btn.sell{background:var(--red)} .btn.grey{background:var(--card2);color:var(--fg)}
+.cmd{display:flex;gap:8px} .cmd button{min-width:72px;border-radius:10px;background:var(--blue);color:#fff;font-weight:600}
+.cmdout{font:13px/1.45 var(--mono);color:var(--fg2);white-space:pre-wrap;overflow-wrap:anywhere}
+.cmdout a{color:var(--blue)}
+
+/* sheets */
+.sheet{position:fixed;inset:0;z-index:40;background:var(--bg);overflow-y:auto;padding:calc(env(safe-area-inset-top,0px) + 8px) max(16px,env(safe-area-inset-right,0px)) calc(env(safe-area-inset-bottom,0px) + 24px) max(16px,env(safe-area-inset-left,0px));transform:translateY(0);transition:transform .25s ease}
+.sheet[hidden]{display:none}
+.sheet .close{font:600 17px var(--text);color:var(--blue);min-height:44px;min-width:44px}
+.coinhead{display:flex;flex-direction:column;gap:2px}
+.coinhead .nm{font:700 28px/1.1 var(--display);display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.shield{display:inline-flex;align-items:center;gap:4px;height:24px;padding:0 8px;border-radius:12px;background:rgba(0,211,90,.16);color:var(--green);font:600 13px var(--text)}
+.shield.bad{background:rgba(255,69,58,.16);color:var(--red)}
+.price{font:700 44px/1.05 var(--display)}
+.candlewrap{height:240px;margin:0 -16px;position:relative}
+.candlewrap canvas{width:100%;height:100%;display:block}
+.stats{display:grid;grid-template-columns:1fr 1fr;gap:1px;background:var(--sep);border-radius:14px;overflow:hidden}
+.stats div{background:var(--card);padding:12px 16px}
+.stats b{display:block;font:600 17px var(--text);margin-top:2px}
+.card{background:var(--card);border-radius:14px;padding:16px;display:flex;flex-direction:column;gap:8px}
+.kv{display:flex;justify-content:space-between;gap:12px;font-size:15px}
+.kv span:first-child{color:var(--fg2)}
+
+/* auditor screen */
+.discs{display:flex;flex-direction:column;align-items:center;gap:6px;padding:12px 0;position:relative}
+.disc{width:min(260px,70vw);height:34px;border-radius:50%;background:var(--card2);position:relative;transition:background 150ms;display:grid;place-items:center;font:700 15px var(--text);color:transparent}
+.disc.ok{background:var(--green);color:#000} .disc.bad{background:var(--red);color:#fff} .disc.skip{background:#3a3a3c}
+.disc.beam{box-shadow:0 0 0 2px var(--cyan) inset}
+.layerrows .li{min-height:52px}
+.verdictbig{font:700 22px/1.2 var(--display)}
+
+/* toast */
+.toasts{position:fixed;left:0;right:0;top:calc(env(safe-area-inset-top,0px) + 8px);z-index:60;display:flex;flex-direction:column;gap:8px;padding:0 max(12px,env(safe-area-inset-right,0px)) 0 max(12px,env(safe-area-inset-left,0px));pointer-events:none}
+.toast{pointer-events:auto;background:rgba(44,44,46,.96);-webkit-backdrop-filter:blur(20px);backdrop-filter:blur(20px);border-radius:18px;padding:12px 14px;display:flex;flex-direction:column;gap:8px;box-shadow:0 8px 30px rgba(0,0,0,.5)}
+.toast .hd{font-size:12px;color:var(--fg2);display:flex;justify-content:space-between}
+.toast .tx{font-weight:600;white-space:pre-line}
+.toast .acts{display:flex;gap:8px}
+.toast .acts a,.toast .acts button{flex:1;min-height:40px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-weight:600;background:#3a3a3c}
+.toast .acts a.buy{background:var(--green);color:#000} .toast .acts a.sell{background:var(--red);color:#fff}
+
+/* tab bar */
+.tabbar{position:fixed;left:0;right:0;bottom:0;z-index:30;display:flex;justify-content:space-around;padding:6px max(8px,env(safe-area-inset-right,0px)) calc(env(safe-area-inset-bottom,0px) + 4px) max(8px,env(safe-area-inset-left,0px));background:rgba(22,22,24,.78);-webkit-backdrop-filter:saturate(180%) blur(20px);backdrop-filter:saturate(180%) blur(20px);border-top:.5px solid var(--sep)}
+.tabbar button{min-width:64px;min-height:48px;display:flex;flex-direction:column;align-items:center;gap:2px;font:500 10px var(--text);color:var(--fg3)}
+.tabbar button svg{width:26px;height:26px;stroke:currentColor;fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.tabbar button[aria-selected="true"]{color:var(--fg)}
+
+/* loading */
+.skel{background:var(--card);border-radius:12px;animation:pulse 1.2s ease-in-out infinite}
+@keyframes pulse{0%,100%{opacity:.5}50%{opacity:1}}
+@media (prefers-reduced-motion:reduce){
+  .odo .col,.bar i,.disc,.strips i{transition:none!important}
+  .skel{animation:none}
+}
+
+</style>
+</head>
+<body>
+<script>
+// ===== core.js · pure logic, no DOM. Tested in node (tests/test_core.js). =====
+
+// ---- links.py equivalent: THE ONLY place FOMO URLs are built ----
+const CHAIN_ID = { solana: 1399811149, robinhood: 4663, base: 8453, bnb: 56 };
+const SIGNUP_URL = "https://fomo.family/r/savipww";
+function coin_url(address, chain = "solana") {
+  if (!(chain in CHAIN_ID)) { console.warn("coin_url: unknown chain", chain); return SIGNUP_URL; }
+  return `https://fomo.family/coin?address=${address}&chainId=${CHAIN_ID[chain]}&r=savipww&source=share_link`;
+}
+function profile_url(handle) {
+  const h = String(handle || "").replace(/^@+/, "");
+  return `https://fomo.family/profile/${h}?source=share_link&r=savipww`;
+}
+
+// ---- settings (STEP 10) with ranges ----
+const SETTINGS_SPEC = {
+  scanner: {
+    min_liquidity_usd: [40000, 1000, 1000000, "Min liquidity $"],
+    max_top10_pct: [25, 1, 100, "Max top 10 %"],
+    max_h1_change_pct: [80, 1, 1000, "Max 1h change %"],
+    poll_s: [60, 15, 600, "Poll every s"],
+    min_pool_age_min: [10, 0, 120, "Min pool age min"],
+    max_wait_min: [60, 5, 360, "Max wait min"],
+    runner_h24_pct: [300, 50, 5000, "Runner 24h %"],
+  },
+  auditor: {
+    enabled: [true, null, null, "Take apart before buying"],
+    max_dev_pct: [5, 0, 100, "Max dev %"],
+    max_top10_pct: [25, 1, 100, "Max top 10 %"],
+    min_lp_locked_pct: [99, 0, 100, "Min LP locked %"],
+    min_pool_age_min: [10, 0, 120, "Min pool age min"],
+    max_bundled: [5, 1, 100, "Max bundled wallets"],
+    max_delegated_accounts: [10, 1, 1000, "Max accounts per delegate"],
+    retries: [3, 0, 10, "Retries"],
+  },
+  analyst: {
+    mode: ["rules", null, null, "Mode"],
+    min_alive_6h: [0.70, 0, 1, "Min alive 6h"],
+    min_organic: [0.65, 0, 1, "Min organic"],
+    max_chase: [0.30, 0, 1, "Max chase"],
+    min_score: [70, 0, 100, "Min score"],
+    timeout_s: [10, 2, 60, "Timeout s"],
+    alive_volume_h1: [25000, 100, 10000000, "Rules · alive at 1h volume $"],
+    organic_buys_h1: [150, 1, 100000, "Rules · organic at 1h buys"],
+    bundled_penalty: [0.5, 0, 1, "Rules · bundled penalty ×"],
+    bundled_from: [3, 1, 100, "Rules · penalty from wallets"],
+    flush_drop_m5_pct: [5, 0.5, 90, "Rules · flush drop 5m %"],
+    chase_h1_pct: [80, 1, 1000, "Rules · chase at 1h %"],
+  },
+  executor: {
+    stack_pct: [8, 0.5, 100, "Stack %"],
+    max_pool_pct: [2, 0.1, 50, "Max % of pool"],
+    min_ticket_usd: [47.50, 5, 10000, "Min ticket $"],
+    below_min: ["bump", null, null, "Below min"],
+    recheck_liq_drop_pct: [20, 1, 100, "Recheck liq drop %"],
+    recheck_price_up_pct: [15, 1, 500, "Recheck price up %"],
+    confirm_window_min: [5, 1, 60, "Confirm window min"],
+  },
+  risk: {
+    poll_s: [15, 5, 120, "Poll every s"],
+    stop_pct: [6, 0.5, 90, "Stop %"],
+    trail_start_pct: [20, 1, 1000, "Trail starts at +%"],
+    trail_pct: [12, 0.5, 90, "Trail %"],
+    timeout_h: [3, 0.25, 48, "Timeout h"],
+    timeout_min_gain_pct: [5, 0, 1000, "Timeout min gain %"],
+    confirm_window_min: [2, 1, 60, "Confirm window min"],
+  },
+  desk: {
+    mode: ["PAPER", null, null, "Mode"],
+    paper_start_stack: [200, 10, 1000000, "PAPER start stack $"],
+    rpc_url: ["", null, null, "Solana RPC URL"],
+    push_rejects: [false, null, null, "Alert on rejects"],
+    fees_ref_discount: [0.10, 0, 1, "Ref fee discount"],
+    fomo_handle: ["Scappy123", null, null, "FOMO handle"],
+  },
+};
+const SETTING_ALIASES = { stop: "risk.stop_pct", trail: "risk.trail_pct", stack: "executor.stack_pct", timeout: "risk.timeout_h" };
+
+function defaultSettings() {
+  const s = {};
+  for (const [g, keys] of Object.entries(SETTINGS_SPEC)) { s[g] = {}; for (const [k, v] of Object.entries(keys)) s[g][k] = v[0]; }
+  return s;
+}
+// returns {ok, value, error}
+function validateSetting(group, key, value) {
+  const spec = SETTINGS_SPEC[group]?.[key];
+  if (!spec) return { ok: false, error: "unknown setting " + group + "." + key };
+  const [def, min, max] = spec;
+  if (typeof def === "boolean") return { ok: true, value: value === true || value === "true" };
+  if (key === "below_min") return ["bump", "skip"].includes(value) ? { ok: true, value } : { ok: false, error: "bump or skip" };
+  if (group === "analyst" && key === "mode") return ["rules", "jev"].includes(value) ? { ok: true, value } : { ok: false, error: "rules or jev" };
+  if (group === "desk" && key === "mode") return ["PAPER", "LIVE"].includes(value) ? { ok: true, value } : { ok: false, error: "PAPER or LIVE" };
+  if (typeof def === "string") return { ok: true, value: String(value).trim() };
+  const n = Number(value);
+  if (!isFinite(n)) return { ok: false, error: "not a number" };
+  if (n < min || n > max) return { ok: false, error: `range ${min} to ${max}` };
+  return { ok: true, value: n };
+}
+
+// ---- fees.py: FOMO on Solana, per side, minus ref discount ----
+function fomoFee(ticketUsd, refDiscount = 0.10) {
+  const t = Math.abs(ticketUsd);
+  let f;
+  if (t <= 47.50) f = t * 0.02;
+  else if (t <= 190) f = 0.95;
+  else f = t * 0.005;
+  return round2(f * (1 - refDiscount));
+}
+
+// ---- ticket check (STEP 10) ----
+function ticketCheck(stack, ex) {
+  const minStack = ex.min_ticket_usd / (ex.stack_pct / 100);
+  if (stack >= minStack) return { status: "ok", minStack };
+  if (ex.below_min === "bump") return { status: "bump", minStack, msg: `tickets bumped to $${fmt2(ex.min_ticket_usd)} = ${fmt1(100 * ex.min_ticket_usd / stack)}% of stack` };
+  return { status: "skip", minStack, msg: `every coin will be skipped, stack under $${fmt2(minStack)}` };
+}
+
+// ---- Executor sizing ----
+// returns {size, cap, skip:reason|null}
+function sizeTicket({ stack, openUsd, poolLiqUsd, ex }) {
+  const free = stack - openUsd;
+  let size = stack * ex.stack_pct / 100, cap = "stack_pct";
+  const poolCap = poolLiqUsd * ex.max_pool_pct / 100;
+  if (poolCap < size) { size = poolCap; cap = "pool"; }
+  if (size < ex.min_ticket_usd) {
+    if (ex.below_min === "skip") return { size: round2(size), cap, skip: "under $" + fmt2(ex.min_ticket_usd) };
+    size = ex.min_ticket_usd; cap = "bump";
+  }
+  if (size > free) return { size: round2(size), cap, skip: "no free stack" };
+  return { size: round2(size), cap, skip: null };
+}
+
+// ---- Analyst rules mode ----
+const clamp = (x, a, b) => Math.max(a, Math.min(b, x));
+function rulesAnswers(dex, bundled, an) {
+  const vh1 = num(dex?.volume?.h1), bh1 = num(dex?.txns?.h1?.buys);
+  const pm5 = num(dex?.priceChange?.m5), ph1 = num(dex?.priceChange?.h1);
+  const bm5 = num(dex?.txns?.m5?.buys), sm5 = num(dex?.txns?.m5?.sells);
+  let organic = clamp(bh1 / an.organic_buys_h1, 0, 1);
+  if ((bundled || 0) >= an.bundled_from) organic *= an.bundled_penalty;
+  const flush = (pm5 <= -an.flush_drop_m5_pct && bm5 >= sm5) ? 1 : (pm5 < 0 ? 0.5 : 0);
+  return {
+    alive_6h: round3(clamp(vh1 / an.alive_volume_h1, 0, 1)),
+    organic: round3(organic),
+    flush,
+    chase: round3(clamp(ph1 / an.chase_h1_pct, 0, 1)),
+  };
+}
+// GATE (code only)
+function gate(a, an) {
+  for (const k of ["alive_6h", "organic", "flush", "chase"]) {
+    if (typeof a[k] !== "number" || !(a[k] >= 0 && a[k] <= 1)) return { score: null, passed: false, failed: ["bad answer"] };
+  }
+  const score = Math.round(100 * (a.alive_6h + a.organic + a.flush + (1 - a.chase)) / 4);
+  const failed = [];
+  if (a.alive_6h < an.min_alive_6h) failed.push("alive " + a.alive_6h.toFixed(2));
+  if (a.organic < an.min_organic) failed.push("organic " + a.organic.toFixed(2));
+  if (a.chase > an.max_chase) failed.push("chase " + a.chase.toFixed(2));
+  if (score < an.min_score) failed.push("score " + score);
+  return { score, passed: failed.length === 0, failed };
+}
+
+// ---- Risk rules (one poll) ----
+// pos: {entry, peak, stopPct, trail_active, opened_at}; returns {pos, exit:null|reason}
+function riskStep(pos, price, now, rk) {
+  const p = { ...pos };
+  p.peak = Math.max(p.peak || p.entry, price);
+  if (price <= p.entry * (1 - p.stopPct / 100)) return { pos: p, exit: "stop" };
+  if (price >= p.entry * (1 + rk.trail_start_pct / 100)) p.trail_active = true;
+  if (p.trail_active && price <= p.peak * (1 - rk.trail_pct / 100)) return { pos: p, exit: "trail" };
+  if (now - p.opened_at >= rk.timeout_h * 3600e3 && price < p.entry * (1 + rk.timeout_min_gain_pct / 100)) return { pos: p, exit: "timeout" };
+  return { pos: p, exit: null };
+}
+// A new stop setting only applies to an open position if it is tighter.
+function applyStopSetting(pos, newStopPct) {
+  return newStopPct < pos.stopPct ? { ...pos, stopPct: newStopPct } : pos;
+}
+// PAPER PnL for a closed position, fees on both sides
+function paperClose(sizeUsd, entry, exit, refDiscount) {
+  const gross = sizeUsd * exit / entry;
+  const fees = round2(fomoFee(sizeUsd, refDiscount) + fomoFee(gross, refDiscount));
+  const pnl = round2(gross - sizeUsd - fees);
+  return { proceeds: round2(gross - fees), fees, pnl, pct: round2(100 * pnl / sizeUsd) };
+}
+
+// ---- Auditor helpers ----
+// biggest connected group of holders in the RugCheck insiders graph
+// returns {bundled, nodata}
+function biggestBundle(graph) {
+  if (!Array.isArray(graph)) return { bundled: null, nodata: true };
+  const parent = {};
+  const find = x => (parent[x] === x ? x : (parent[x] = find(parent[x])));
+  const holders = new Set();
+  for (const net of graph) {
+    if (!Array.isArray(net?.links) && !Array.isArray(net?.nodes)) return { bundled: null, nodata: true };
+    for (const n of net.nodes || []) if (num(n.holdings) > 0) { holders.add(n.id); parent[n.id] = n.id; }
+  }
+  for (const net of graph) for (const l of net.links || []) {
+    if (holders.has(l.source) && holders.has(l.target)) {
+      const a = find(l.source), b = find(l.target); if (a !== b) parent[a] = b;
+    }
+  }
+  const sizes = {};
+  for (const h of holders) { const r = find(h); sizes[r] = (sizes[r] || 0) + 1; }
+  const vals = Object.values(sizes);
+  const big = vals.length ? Math.max(...vals) : 0;
+  return { bundled: big > 1 ? big : 0, nodata: false };
+}
+function normName(s) { return String(s || "").toLowerCase().replace(/[\s\d]/g, "").replace(/[^\p{L}]/gu, ""); }
+function copycatOf(name, symbol, runners) {
+  const a = [normName(name), normName(symbol)].filter(Boolean);
+  for (const r of runners) {
+    const b = [normName(r.name), normName(r.symbol)].filter(Boolean);
+    for (const x of a) for (const y of b) {
+      if (x.length < 2 || y.length < 2) continue;
+      if (x === y || x.includes(y) || y.includes(x)) return r.name || r.symbol;
+    }
+  }
+  return null;
+}
+function pickPumpswapPair(pairs) {
+  const ps = (pairs || []).filter(p => p.dexId === "pumpswap");
+  if (!ps.length) return null;
+  return ps.sort((a, b) => num(b?.liquidity?.usd) - num(a?.liquidity?.usd))[0];
+}
+
+// ---- formatting ----
+function num(x) { const n = Number(x); return isFinite(n) ? n : 0; }
+function round2(x) { return Math.round(x * 100) / 100; }
+function round3(x) { return Math.round(x * 1000) / 1000; }
+function fmt1(x) { return (Math.round(x * 10) / 10).toString(); }
+function fmt2(x) { return Number(x).toFixed(2); }
+function fmtUsd(x, dp = 2) { const s = Math.abs(x).toLocaleString("en-US", { minimumFractionDigits: dp, maximumFractionDigits: dp }); return (x < 0 ? "-$" : "$") + s; }
+function fmtK(x) { x = num(x); if (x >= 1e6) return (x / 1e6).toFixed(1) + "M"; if (x >= 1e3) return (x / 1e3).toFixed(1) + "K"; return Math.round(x).toString(); }
+function fmtPrice(p) { p = num(p); if (p === 0) return "$0"; if (p >= 1) return "$" + p.toFixed(4); const d = Math.max(2, -Math.floor(Math.log10(p)) + 3); return "$" + p.toFixed(Math.min(d, 12)); }
+function shortAddr(a) { return a ? a.slice(0, 4) + "…" + a.slice(-3) : ""; }
+
+if (typeof module !== "undefined") module.exports = {
+  CHAIN_ID, SIGNUP_URL, coin_url, profile_url, SETTINGS_SPEC, defaultSettings, validateSetting,
+  fomoFee, ticketCheck, sizeTicket, rulesAnswers, gate, riskStep, applyStopSetting, paperClose,
+  biggestBundle, copycatOf, pickPumpswapPair, normName,
+};
+
+// ===== agents.js · the 5 agents, storage, network. Runs in Safari. =====
+const AGENTS = ["scanner", "auditor", "analyst", "executor", "risk"];
+const NAMES = { scanner: "Scanner", auditor: "Auditor", analyst: "Analyst", executor: "Executor", risk: "Risk" };
+const TOKEN_PROG = "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA";
+const LAYER_NAMES = ["Mint authority", "Freeze authority", "Dev wallet", "Top 10 holders", "Liquidity", "Pool age", "Bundled wallets", "Delegations"];
+
+// ---------- event bus to the UI ----------
+const listeners = new Set();
+function onDesk(fn) { listeners.add(fn); }
+function emit(type, data) { for (const fn of listeners) { try { fn(type, data); } catch (e) { console.error(e); } } }
+
+// ---------- storage ----------
+const DB_KEY = "gb_db_v1";
+let DB = null;
+function freshDB() {
+  const s = defaultSettings();
+  try { const r = localStorage.getItem("gb_rpc"); if (r) s.desk.rpc_url = r; } catch {}
+  const now = Date.now();
+  return {
+    v: 1, settings: s, nightStart: now, nightStartBalance: s.desk.paper_start_stack, cash: s.desk.paper_start_stack,
+    coins: {}, positions: [], activity: [], prices: {}, balance: [[now, s.desk.paper_start_stack]], pushes: [],
+    counts: freshCounts(), decisions: { scanner: [], auditor: [], analyst: [], executor: [], risk: [] },
+    paused: { scanner: false, auditor: false, analyst: false, executor: false, risk: false },
+    skips: {}, runners: [], reports: [], changeLog: [], fullPaperNights: 0, seq: 1, wsReconnects: [],
+  };
+}
+function freshCounts() { return { pools: 0, killed: 0, passed: 0, audited: 0, rejected: 0, scored: 0, trades: 0, exits: 0 }; }
+function loadDB() {
+  try { const t = localStorage.getItem(DB_KEY); if (t) { DB = JSON.parse(t); } } catch { DB = null; }
+  if (!DB || DB.v !== 1) DB = freshDB();
+  const d = defaultSettings();
+  for (const g of Object.keys(d)) DB.settings[g] = { ...d[g], ...(DB.settings[g] || {}) };
+  return DB;
+}
+let saveTimer = null;
+function saveDB(now = false) {
+  if (saveTimer && !now) return;
+  const doSave = () => {
+    saveTimer = null;
+    pruneDB();
+    try { localStorage.setItem(DB_KEY, JSON.stringify(DB)); }
+    catch (e) { // storage full: drop older price history and retry once
+      for (const m of Object.keys(DB.prices)) DB.prices[m] = DB.prices[m].slice(-120);
+      try { localStorage.setItem(DB_KEY, JSON.stringify(DB)); } catch {}
+    }
+  };
+  if (now) doSave(); else saveTimer = setTimeout(doSave, 3000);
+}
+function pruneDB() {
+  const keep = new Set(openPositions().map(p => p.mint));
+  const cutoff = Date.now() - 36 * 3600e3;
+  for (const [m, c] of Object.entries(DB.coins)) if ((c.seenAt || 0) < cutoff && !keep.has(m)) { delete DB.coins[m]; delete DB.prices[m]; }
+  for (const m of Object.keys(DB.prices)) if (DB.prices[m].length > 900) DB.prices[m] = DB.prices[m].slice(-900);
+  if (DB.activity.length > 800) DB.activity = DB.activity.slice(-800);
+  if (DB.balance.length > 6000) DB.balance = DB.balance.filter((_, i) => i % 2 === 0 || i > DB.balance.length - 1500);
+  if (DB.pushes.length > 200) DB.pushes = DB.pushes.slice(-200);
+  if (DB.reports.length > 14) DB.reports = DB.reports.slice(-14);
+}
+const S = () => DB.settings;
+const openPositions = () => DB.positions.filter(p => !p.closed_at);
+const nextId = () => DB.seq++;
+
+// ---------- network ----------
+let lastOk = Date.now(), lastFail = 0, failStreak = 0;
+function noteNet(ok) { if (ok) { lastOk = Date.now(); failStreak = 0; } else { lastFail = Date.now(); failStreak++; } }
+async function httpJSON(url, opts = {}, ms = 20000) {
+  const c = new AbortController(); const t = setTimeout(() => c.abort(), ms);
+  try {
+    const r = await fetch(url, { ...opts, signal: c.signal });
+    if (r.status === 429) { const e = new Error("HTTP 429"); e.code = 429; throw e; }
+    if (!r.ok) { const e = new Error("HTTP " + r.status); e.code = r.status; throw e; }
+    const j = await r.json(); noteNet(true); return j;
+  } catch (e) {
+    noteNet(false);
+    if (e.name === "AbortError") throw new Error("timed out");
+    if (e.message === "Load failed" || e.message === "Failed to fetch") throw new Error("network blocked");
+    throw e;
+  } finally { clearTimeout(t); }
+}
+// simple rate limiter: n per second
+function limiter(perSec) {
+  const q = []; let tokens = perSec;
+  setInterval(() => { tokens = perSec; while (tokens > 0 && q.length) { tokens--; q.shift()(); } }, 1000);
+  return () => new Promise(res => { if (tokens > 0) { tokens--; res(); } else q.push(res); });
+}
+const rpcGate = limiter(8), rugGate = limiter(2);
+function rpcUrl() {
+  let v = (S().desk.rpc_url || "").trim();
+  if (/^[0-9a-f-]{30,}$/i.test(v)) v = "https://mainnet.helius-rpc.com/?api-key=" + v;
+  return v;
+}
+async function rpc(method, params, ms = 30000) {
+  const url = rpcUrl(); if (!url) throw new Error("no RPC URL");
+  await rpcGate();
+  const j = await httpJSON(url, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ jsonrpc: "2.0", id: 1, method, params }) }, ms);
+  if (j.error) throw new Error(j.error.message || "RPC error");
+  return j.result;
+}
+async function withRetry(fn, retries, gapMs = 2000) {
+  let last;
+  for (let i = 0; i <= retries; i++) { try { return await fn(); } catch (e) { last = e; if (i < retries) await sleep(gapMs); } }
+  throw last;
+}
+const sleep = ms => new Promise(r => setTimeout(r, ms));
+
+// DexScreener: one batch per writer, chunks of 30, under 250/min
+let dexCalls = [], dexBackoffUntil = 0;
+async function dexBatch(mints) {
+  const out = {};
+  if (Date.now() < dexBackoffUntil) throw new Error("DexScreener backoff");
+  for (let i = 0; i < mints.length; i += 30) {
+    dexCalls = dexCalls.filter(t => t > Date.now() - 60e3);
+    if (dexCalls.length >= 250) await sleep(1000);
+    dexCalls.push(Date.now());
+    try {
+      const arr = await httpJSON("https://api.dexscreener.com/tokens/v1/solana/" + mints.slice(i, i + 30).join(","));
+      for (const p of Array.isArray(arr) ? arr : []) { const m = p?.baseToken?.address; if (m) (out[m] = out[m] || []).push(p); }
+    } catch (e) { if (e.code === 429) { dexBackoffUntil = Date.now() + 30e3; } throw e; }
+  }
+  return out;
+}
+function writePrice(mint, pair) {
+  const p = Number(pair?.priceUsd); if (!isFinite(p) || p <= 0) return;
+  (DB.prices[mint] = DB.prices[mint] || []).push([Date.now(), p, num(pair?.volume?.m5)]);
+  const c = DB.coins[mint]; if (c) { c.lastDex = slimPair(pair); c.lastPriceTs = Date.now(); }
+}
+function slimPair(p) {
+  return { dexId: p.dexId, pairAddress: p.pairAddress, priceUsd: num(p.priceUsd), liq: num(p?.liquidity?.usd), mcap: num(p.marketCap || p.fdv),
+    vol: p.volume || {}, txns: p.txns || {}, chg: p.priceChange || {}, pairCreatedAt: p.pairCreatedAt };
+}
+const rugCache = {};
+async function rugcheck(mint, path, fresh = false) {
+  const k = mint + path;
+  if (!fresh && rugCache[k] && Date.now() - rugCache[k].t < 120e3) return rugCache[k].v;
+  await rugGate();
+  const v = await httpJSON(`https://api.rugcheck.xyz/v1/tokens/${mint}${path}`, {}, 25000);
+  rugCache[k] = { t: Date.now(), v }; return v;
+}
+
+// ---------- shared records ----------
+function addActivity(kind, mint, agent, title, subtitle, value) {
+  const row = { id: nextId(), ts: Date.now(), kind, mint, agent, title, subtitle, value };
+  DB.activity.push(row); emit("activity", row); saveDB(); return row;
+}
+function decision(agent, mint, verdict, reason) {
+  const c = DB.coins[mint];
+  const d = { ts: Date.now(), mint, name: c?.name || shortAddr(mint), verdict, reason };
+  const arr = DB.decisions[agent]; arr.push(d); if (arr.length > 20) arr.shift();
+  emit("decision", { agent, d });
+}
+// a "push": shows as an alert in the app with its FOMO button
+function push(text, mint, buttonLabel, extra = {}) {
+  const pfx = S().desk.mode === "PAPER" ? "PAPER · " : "";
+  const p = { id: nextId(), ts: Date.now(), text: pfx + text, mint, link: mint ? coin_url(mint, "solana") : null, button: buttonLabel, read: false, ...extra };
+  DB.pushes.push(p); emit("push", p); saveDB(); return p;
+}
+function logLine(agent, obj) { console.log("[" + agent + "]", JSON.stringify(obj)); }
+const coinName = m => DB.coins[m]?.name || DB.coins[m]?.symbol || shortAddr(m);
+
+// ---------- heartbeats + watchdog ----------
+const hb = {}; const loops = {};
+function startLoop(agent, everyMs, fn) {
+  stopLoop(agent);
+  let busy = false;
+  const tick = async () => {
+    hb[agent] = Date.now();
+    if (busy || DB.paused[agent]) return;
+    busy = true;
+    try { await fn(); } catch (e) { console.warn(agent, e.message); emit("error", { agent, msg: e.message }); }
+    finally { busy = false; hb[agent] = Date.now(); }
+  };
+  loops[agent] = { id: setInterval(tick, everyMs), everyMs, fn };
+  tick();
+}
+function stopLoop(agent) { if (loops[agent]) clearInterval(loops[agent].id); }
+function watchdog() {
+  for (const a of Object.keys(loops)) {
+    const age = Date.now() - (hb[a] || 0);
+    if (age > 120e3 && !document.hidden) {
+      const mins = Math.round(age / 60e3);
+      startLoop(a, loops[a].everyMs, loops[a].fn);
+      push(`Restarted ${NAMES[a] || a}, down ${mins} min`, null, null);
+    }
+  }
+  DB.wsReconnects = DB.wsReconnects.filter(t => t > Date.now() - 3600e3);
+}
+
+// ================= AGENT 1 · SCANNER =================
+let ws = null, wsLastMsg = 0, wsBackoff = 1, wsState = "closed";
+function scannerConnect() {
+  try { ws && ws.close(); } catch {}
+  wsState = "connecting"; emit("ws", wsState);
+  ws = new WebSocket("wss://pumpportal.fun/api/data");
+  ws.onopen = () => { wsState = "open"; wsBackoff = 1; wsLastMsg = Date.now(); ws.send(JSON.stringify({ method: "subscribeMigration" })); emit("ws", wsState); };
+  ws.onmessage = ev => {
+    wsLastMsg = Date.now();
+    let m; try { m = JSON.parse(ev.data); } catch { return; }
+    const mint = m.mint; if (!mint || typeof mint !== "string") return;   // fields.py: mint, pool, signature, txType
+    if (DB.paused.scanner) return;
+    scannerIntake({ mint, pool: m.pool || null, signature: m.signature || null, txType: m.txType || null });
+  };
+  ws.onclose = () => { wsState = "closed"; emit("ws", wsState); };
+  ws.onerror = () => { wsState = "error"; emit("ws", wsState); };
+}
+function scannerWatch() {
+  const silent = Date.now() - wsLastMsg > 120e3;
+  if (wsState !== "connecting" && (wsState !== "open" || silent)) {
+    if (!scannerWatch.nextTry || Date.now() >= scannerWatch.nextTry) {
+      DB.wsReconnects.push(Date.now()); logLine("scanner", { reconnect: true, backoff: wsBackoff });
+      scannerConnect(); scannerWatch.nextTry = Date.now() + wsBackoff * 1000; wsBackoff = Math.min(60, wsBackoff * 2);
+      if (DB.wsReconnects.length === 11) push("More than 10 graduation-stream reconnects in the last hour", null, null);
+    }
+  }
+}
+async function scannerIntake(msg) {
+  if (DB.coins[msg.mint]) return;
+  const c = DB.coins[msg.mint] = { mint: msg.mint, pool: msg.pool, signature: msg.signature, migratedAt: Date.now(), seenAt: Date.now(),
+    status: "waiting", name: null, symbol: null, creator: null, creatorBalAtMig: null, holders: null };
+  DB.counts.pools++; emit("scan", { mint: msg.mint, status: "waiting" }); saveDB();
+  // creator is not in the migration message -> RugCheck report (fields.py: creator)
+  try {
+    const rep = await rugcheck(msg.mint, "/report");
+    c.creator = rep?.creator || null;
+    c.name = c.name || rep?.tokenMeta?.name || rep?.fileMeta?.name || null;
+    c.symbol = c.symbol || rep?.tokenMeta?.symbol || rep?.fileMeta?.symbol || null;
+    if (c.creator) c.creatorBalAtMig = await creatorBalance(c.creator, msg.mint);
+  } catch (e) { logLine("scanner", { mint: msg.mint, creatorLookup: e.message }); }
+  emit("scan", { mint: msg.mint, status: "waiting" }); saveDB();
+}
+async function creatorBalance(owner, mint) {
+  const r = await rpc("getTokenAccountsByOwner", [owner, { mint }, { encoding: "jsonParsed" }]);
+  let sum = 0; for (const a of r?.value || []) sum += num(a?.account?.data?.parsed?.info?.tokenAmount?.amount);
+  return sum;
+}
+// top 10 holders % of supply, pool + curve excluded
+async function top10Pct(mint, exclude) {
+  const [sup, largest] = await Promise.all([rpc("getTokenSupply", [mint]), rpc("getTokenLargestAccounts", [mint])]);
+  const supply = num(sup?.value?.amount); if (!supply) throw new Error("no supply");
+  const accts = largest?.value || [];
+  const infos = accts.length ? await rpc("getMultipleAccounts", [accts.map(a => a.address), { encoding: "jsonParsed" }]) : { value: [] };
+  const kept = [];
+  accts.forEach((a, i) => {
+    const owner = infos?.value?.[i]?.data?.parsed?.info?.owner;
+    if (exclude.has(owner) || exclude.has(a.address)) return;
+    kept.push(num(a.amount));
+  });
+  kept.sort((x, y) => y - x);
+  const sum = kept.slice(0, 10).reduce((s, x) => s + x, 0);
+  return { pct: 100 * sum / supply, supply, count: accts.length };
+}
+async function scannerPoll() {
+  const sc = S().scanner, now = Date.now();
+  const waiting = Object.values(DB.coins).filter(c => c.status === "waiting");
+  if (!waiting.length) return;
+  let pairs;
+  try { pairs = await dexBatch(waiting.map(c => c.mint)); }
+  catch (e) { logLine("scanner", { dex: e.message }); return; } // keep the waiting room
+  for (const c of waiting) {
+    const list = pairs[c.mint] || [];
+    const pair = pickPumpswapPair(list);
+    for (const p of list) if (num(p?.priceChange?.h24) >= sc.runner_h24_pct && !DB.runners.find(r => r.mint === c.mint))
+      DB.runners.push({ mint: c.mint, name: p?.baseToken?.name, symbol: p?.baseToken?.symbol, ts: now });
+    const ageMin = Math.floor((now - c.migratedAt) / 60e3);
+    if (!pair) {
+      if (list.length && list.every(p => p.dexId !== "pumpfun" && p.dexId !== "pumpswap")) { scanKill(c, "not PumpSwap", null, ageMin); continue; }
+      if (ageMin >= sc.max_wait_min) scanKill(c, "never qualified", null, ageMin, true);
+      continue; // DexScreener doesn't know it yet -> waits
+    }
+    c.name = c.name || pair?.baseToken?.name; c.symbol = c.symbol || pair?.baseToken?.symbol;
+    c.pair = pair.pairAddress; writePrice(c.mint, pair);
+    const liq = num(pair?.liquidity?.usd), h1 = num(pair?.priceChange?.h1);
+    c.scan = { liquidityUsd: liq, h1ChangePct: h1, ageMin };
+    if (liq < sc.min_liquidity_usd) { scanKill(c, "liq $" + fmtK(liq), pair, ageMin); continue; }
+    if (ageMin >= sc.min_pool_age_min) {
+      try {
+        const t = await top10Pct(c.mint, new Set([c.pool, c.pair].filter(Boolean)));
+        c.scan.top10Pct = round2(t.pct);
+        if (t.pct > sc.max_top10_pct) { scanKill(c, "top 10 hold " + Math.round(t.pct) + "%", pair, ageMin); continue; }
+      } catch (e) { logLine("scanner", { mint: c.mint, top10: e.message }); continue; } // can't read yet: stay in the room
+    }
+    if (h1 > sc.max_h1_change_pct) { scanKill(c, "+" + Math.round(h1) + "% in 1h", pair, ageMin); continue; }
+    const cc = copycatOf(c.name, c.symbol, DB.runners.filter(r => r.mint !== c.mint));
+    if (cc) { scanKill(c, "copycat of " + cc, pair, ageMin); continue; }
+    if (ageMin >= sc.min_pool_age_min && c.scan.top10Pct != null) {
+      c.status = "passed"; c.liqAtScan = liq; DB.counts.passed++;
+      const out = { agent: "scanner", mint: c.mint, name: c.name, symbol: c.symbol, pool: c.pool, liquidityUsd: liq, top10Pct: c.scan.top10Pct, h1ChangePct: h1, ageMin, verdict: "pass", reason: null, ts: new Date().toISOString() };
+      logLine("scanner", out); decision("scanner", c.mint, "pass", "liq $" + fmtK(liq) + " · → auditor");
+      emit("scan", { mint: c.mint, status: "passed" }); auditorQueue.push(c.mint); continue;
+    }
+    if (ageMin >= sc.max_wait_min) scanKill(c, "never qualified", pair, ageMin, true);
+  }
+  saveDB();
+}
+function scanKill(c, reason, pair, ageMin, dropped = false) {
+  c.status = "killed"; c.reason = reason; DB.counts.killed++;
+  logLine("scanner", { agent: "scanner", mint: c.mint, verdict: "kill", reason, liq: c.scan?.liquidityUsd, top10: c.scan?.top10Pct, h1: c.scan?.h1ChangePct, age: ageMin });
+  decision("scanner", c.mint, dropped ? "drop" : "kill", reason);
+  emit("scan", { mint: c.mint, status: "killed", reason });
+}
+
+// ================= AGENT 2 · AUDITOR =================
+const auditorQueue = [];
+async function auditorTick() {
+  const mint = auditorQueue.shift(); if (!mint) return;
+  const c = DB.coins[mint]; if (!c || c.status !== "passed") return;
+  if (!S().auditor.enabled) { c.status = "audited"; c.audit = { passed: true, skipped: true, layers: [], ts: Date.now() }; analystQueue.push(mint); return; }
+  await runAudit(c, true);
+}
+// full 8-layer audit; toDesk=false for "buy X" commands on coins never pushed
+async function runAudit(c, toDesk) {
+  const au = S().auditor, mint = c.mint;
+  c.audit = { running: true, layers: [], passed: false, reason: null, ts: Date.now(), holders: null };
+  emit("audit_start", { mint });
+  let rep = null, graph = undefined, acct = null, supply = null, decimals = 0, bundled = null, delegMax = null;
+  const getRep = async () => rep || (rep = await withRetry(() => rugcheck(mint, "/report", true), au.retries));
+  const getAcct = async () => acct || (acct = await withRetry(() => rpc("getAccountInfo", [mint, { encoding: "jsonParsed" }]), au.retries));
+  const L = async (n, fn) => {
+    const t0 = performance.now(); let res;
+    try { res = await fn(); } catch (e) { res = { pass: false, value: "no data: " + ["mint", "freeze", "dev", "holders", "liquidity", "age", "bundles", "delegations"][n - 1], err: e.message }; }
+    const layer = { n, name: LAYER_NAMES[n - 1], pass: !!res.pass, value: res.value, source: res.source || "rpc", ms: Math.round(performance.now() - t0) };
+    c.audit.layers.push(layer); emit("audit_layer", { mint, layer }); logLine("auditor", { mint, ...layer, err: res.err });
+    return layer.pass;
+  };
+  const layers = [
+    () => L(1, async () => { const info = (await getAcct())?.value?.data?.parsed?.info; if (!info) throw new Error("no account");
+      supply = num(info.supply); decimals = info.decimals; return info.mintAuthority == null ? { pass: true, value: "Revoked" } : { pass: false, value: "mint not revoked" }; }),
+    () => L(2, async () => { const info = (await getAcct())?.value?.data?.parsed?.info; if (!info) throw new Error("no account");
+      return info.freezeAuthority == null ? { pass: true, value: "Revoked" } : { pass: false, value: "freeze not revoked" }; }),
+    () => L(3, async () => {
+      if (!supply) return { pass: false, value: "no supply" };
+      if (!c.creator) { try { c.creator = (await getRep())?.creator || null; } catch {} }
+      if (!c.creator) return { pass: false, value: "no data: dev" };
+      const bal = await withRetry(() => creatorBalance(c.creator, mint), au.retries);
+      if (c.creatorBalAtMig == null) c.creatorBalAtMig = bal;  // first sight of the dev wallet
+      const pct = 100 * bal / supply;
+      if (bal < c.creatorBalAtMig) return { pass: false, value: "dev sold" };
+      if (pct >= au.max_dev_pct) return { pass: false, value: "dev holds " + Math.round(pct) + "%" };
+      c.devPct = round2(pct); return { pass: true, value: fmt1(pct) + "% · sold 0" };
+    }),
+    () => L(4, async () => { const t = await withRetry(() => top10Pct(mint, new Set([c.pool, c.pair].filter(Boolean))), au.retries);
+      c.top10 = round2(t.pct); c.largestCount = t.count;
+      return t.pct < au.max_top10_pct ? { pass: true, value: fmt1(t.pct) + "%" } : { pass: false, value: "top 10 hold " + Math.round(t.pct) + "%" }; }),
+    () => L(5, async () => { const r = await getRep();
+      const mk = (r?.markets || []).find(m => m.pubkey === c.pool || m.pubkey === c.pair);
+      const pct = mk?.lp?.lpLockedPct;
+      if (!mk || pct == null) return { pass: false, value: "no data: liquidity", source: "rugcheck" };
+      const liqNow = c.lastDex?.liq ?? null;
+      if (liqNow != null && c.liqAtScan && liqNow < c.liqAtScan * 0.5) return { pass: false, value: "liquidity pulled", source: "rugcheck" };
+      c.lp = Math.round(num(pct));
+      return num(pct) >= au.min_lp_locked_pct ? { pass: true, value: Math.round(num(pct)) + "% locked", source: "rugcheck" } : { pass: false, value: "liquidity unlocked", source: "rugcheck" }; }),
+    () => L(6, async () => { const m = Math.floor((Date.now() - c.migratedAt) / 60e3);
+      return m >= au.min_pool_age_min ? { pass: true, value: m >= 60 ? Math.floor(m / 60) + "h " + (m % 60) + "m" : m + "m" } : { pass: false, value: "pool too young" }; }),
+    () => L(7, async () => { graph = await withRetry(() => rugcheck(mint, "/insiders/graph", true), au.retries);
+      const b = biggestBundle(graph); if (b.nodata) return { pass: false, value: "no data: bundles", source: "rugcheck" };
+      bundled = b.bundled;
+      return b.bundled < au.max_bundled ? { pass: true, value: b.bundled ? b.bundled + " linked" : "None", source: "rugcheck" } : { pass: false, value: b.bundled + " bundled wallets", source: "rugcheck" }; }),
+    () => L(8, async () => {
+      // getProgramAccounts returns nothing for Token-2022 on Helius (proved 6 Nov), so: Helius getTokenAccounts + getMultipleAccounts
+      let page = 1, all = [];
+      while (page <= 20) {
+        await rpcGate();
+        const j = await withRetry(() => httpJSON(rpcUrl(), { method: "POST", headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ jsonrpc: "2.0", id: 1, method: "getTokenAccounts", params: { mint, limit: 1000, page } }) }, 45000), au.retries);
+        if (j.error) throw new Error(j.error.message);
+        const ta = j.result?.token_accounts || []; all = all.concat(ta);
+        if (ta.length < 1000) break; page++;
+      }
+      const holders = all.filter(a => num(a.amount) > 0).length;
+      if (!holders && (c.largestCount || 0) > 0) throw new Error("0 accounts but holders exist");
+      c.holders = holders; c.audit.holders = holders;
+      const deleg = all.filter(a => num(a.delegated_amount) > 0).map(a => a.address);
+      const by = {};
+      for (let i = 0; i < deleg.length; i += 100) {
+        const r = await rpc("getMultipleAccounts", [deleg.slice(i, i + 100), { encoding: "jsonParsed" }]);
+        for (const v of r?.value || []) { const d = v?.data?.parsed?.info?.delegate; if (d) by[d] = (by[d] || 0) + 1; }
+      }
+      const top = Object.entries(by).sort((a, b) => b[1] - a[1])[0];
+      delegMax = top ? top[1] : 0;
+      if (top && top[1] >= au.max_delegated_accounts) return { pass: false, value: top[1] + " wallets → " + shortAddr(top[0]) };
+      return { pass: true, value: top ? top[1] + " delegated" : "None" };
+    }),
+  ];
+  let passed = true;
+  for (let i = 0; i < 8; i++) {
+    const ok = await layers[i]();
+    if (!ok) { passed = false;
+      for (let k = i + 2; k <= 8; k++) { const layer = { n: k, name: LAYER_NAMES[k - 1], pass: null, value: "not checked", source: "-" }; c.audit.layers.push(layer); emit("audit_layer", { mint, layer }); }
+      break; }
+  }
+  const failedLayer = c.audit.layers.find(l => l.pass === false);
+  c.audit.running = false; c.audit.passed = passed; c.audit.reason = failedLayer ? failedLayer.value : null;
+  c.audit.bundled = bundled; c.audit.delegMax = delegMax;
+  if (failedLayer && failedLayer.n === 8 && /^no data/.test(failedLayer.value)) {
+    c.audit.layer8Down = true;
+    if (!runAudit.l8Warned) { runAudit.l8Warned = true; push("layer 8 down, every coin is red until rpc_url changes", null, null); }
+  }
+  const out = { agent: "auditor", mint, ts: new Date().toISOString(), passed, layersChecked: c.audit.layers.filter(l => l.pass !== null).length, layers: c.audit.layers, holders: c.holders, reason: c.audit.reason };
+  logLine("auditor", { mint, verdict: passed });
+  emit("audit_done", out);
+  if (!toDesk) return out;
+  DB.counts.audited++;
+  if (passed) { c.status = "audited"; decision("auditor", mint, "pass", "8/8 → Executor"); analystQueue.push(mint); }
+  else {
+    c.status = "rejected"; c.reason = c.audit.reason; DB.counts.rejected++;
+    decision("auditor", mint, "reject", c.audit.reason);
+    addActivity("rejected", mint, "Auditor", "Rejected " + coinName(mint), "Auditor · " + c.audit.reason, "Skipped");
+    if (S().desk.push_rejects) push("Rejected " + coinName(mint) + " · " + c.audit.reason, mint, "Open on FOMO");
+  }
+  saveDB(); return out;
+}
+
+// ================= AGENT 3 · ANALYST =================
+const analystQueue = [];
+async function analystTick() {
+  const mint = analystQueue.shift(); if (!mint) return;
+  const c = DB.coins[mint]; if (!c || c.status !== "audited" || c.verdict) return;
+  const an = S().analyst;
+  let pair;
+  try { const p = await dexBatch([mint]); pair = pickPumpswapPair(p[mint]); }
+  catch (e) { return analystReject(c, "no answer", null); }
+  if (!pair) return analystReject(c, "no answer", null);
+  writePrice(mint, pair);
+  let answers, model = "rules", inputTokens = 0;
+  if (an.mode === "jev") {
+    const key = (() => { try { return localStorage.getItem("gb_jev") || ""; } catch { return ""; } })().replace(/[^\x21-\x7E]/g, "");
+    if (!key) return analystReject(c, "no answer", null);
+    try {
+      const r = await withRetry(() => httpJSON("https://api.typesafe.ai/v1/systemone", { method: "POST",
+        headers: { "Content-Type": "application/json", "Authorization": "Bearer " + key },
+        body: JSON.stringify({ model: "jev-latest", state: analystState(c, pair), questions: {
+          alive_6h: { type: "noul", instructions: "This coin is still actively traded 6 hours from now" },
+          organic: { type: "noul", instructions: "Most buyers in the last 30 minutes are separate real wallets" },
+          flush: { type: "noul", instructions: "Price just flushed down and buyers are absorbing it" },
+          chase: { type: "noul", instructions: "This entry is chasing a green candle that already ran" } } }) }, an.timeout_s * 1000), 1);
+      answers = {}; for (const k of ["alive_6h", "organic", "flush", "chase"]) answers[k] = r?.answers?.[k]?.noul;
+      model = r?.model || "jev"; inputTokens = num(r?.usage?.input_tokens ?? r?.usage?.inputTokens);
+    } catch (e) { return analystReject(c, "no answer", null); }
+  } else answers = rulesAnswers(pair, c.audit?.bundled || 0, an);
+  const g = gate(answers, an);
+  c.verdict = { answers, score: g.score, passed: g.passed, failed: g.failed, model, inputTokens, ts: Date.now() };
+  c.priceAtAnalyst = num(pair.priceUsd); DB.counts.scored++;
+  logLine("analyst", { mint, ...answers, score: g.score, verdict: g.passed, inputTokens });
+  emit("verdict", { mint, ...c.verdict });
+  if (g.passed) { c.status = "scored"; decision("analyst", mint, "pass", "score " + g.score); executorQueue.push(mint); }
+  else analystReject(c, g.failed[0], g.score);
+  saveDB();
+}
+function analystState(c, p) {
+  const age = Math.floor((Date.now() - c.migratedAt) / 60e3);
+  return (`Coin ${c.name || c.symbol || "unknown"} on Solana, graduated ${age} min ago. Liquidity $${Math.round(num(p?.liquidity?.usd))}. Market cap $${Math.round(num(p?.marketCap))}. ` +
+    `Last 5 min: ${num(p?.txns?.m5?.buys)} buys, ${num(p?.txns?.m5?.sells)} sells, volume $${Math.round(num(p?.volume?.m5))}, price ${num(p?.priceChange?.m5)}%. ` +
+    `Last 1h: ${num(p?.txns?.h1?.buys)} buys, ${num(p?.txns?.h1?.sells)} sells, volume $${Math.round(num(p?.volume?.h1))}, price ${num(p?.priceChange?.h1)}%. ` +
+    `Top 10 hold ${c.top10 ?? "?"}%. Dev holds ${c.devPct ?? "?"}%, sold 0. LP ${c.lp ?? "?"}% locked. Bundled ${c.audit?.bundled ?? 0}. Delegations ${c.audit?.delegMax ?? 0}.`).slice(0, 3000);
+}
+function analystReject(c, rule, score) {
+  c.status = "rejected"; c.reason = rule;
+  c.verdict = c.verdict || { passed: false, failed: [rule], score, model: S().analyst.mode, ts: Date.now() };
+  const who = S().analyst.mode === "rules" ? "Analyst (rules)" : "Analyst";
+  decision("analyst", c.mint, "reject", rule);
+  addActivity("rejected", c.mint, who, "Rejected " + coinName(c.mint), who + " · " + rule, "Skipped");
+  emit("verdict", { mint: c.mint, ...c.verdict });
+  saveDB();
+}
+
+// ================= AGENT 4 · EXECUTOR =================
+const executorQueue = [];
+function paperBalance() {
+  let v = DB.cash;
+  for (const p of openPositions()) { const last = lastPrice(p.mint) || p.entry; v += p.size * last / p.entry; }
+  return round2(v);
+}
+function lastPrice(mint) { const a = DB.prices[mint]; return a && a.length ? a[a.length - 1][1] : null; }
+async function executorTick() {
+  const mint = executorQueue.shift(); if (!mint) return;
+  const c = DB.coins[mint]; if (!c || c.status !== "scored" || c.signal) return;   // 1 push per coin per night
+  if (DB.skips[mint]) return;
+  if (S().desk.mode !== "PAPER") return execSkip(c, "LIVE needs the PC desk");
+  const ex = S().executor;
+  let pair;
+  try { const p = await dexBatch([mint]); pair = pickPumpswapPair(p[mint]); } catch { pair = null; }
+  const price = num(pair?.priceUsd);
+  if (!pair || !price) return execSkip(c, "no price");
+  writePrice(mint, pair);
+  const liq = num(pair?.liquidity?.usd);
+  if (c.liqAtScan && liq < c.liqAtScan * (1 - ex.recheck_liq_drop_pct / 100)) return execSkip(c, "liquidity dropping");
+  if (c.priceAtAnalyst && price > c.priceAtAnalyst * (1 + ex.recheck_price_up_pct / 100)) return execSkip(c, "ran before the push");
+  const stack = paperBalance();
+  const openUsd = openPositions().reduce((s, p) => s + p.size, 0);
+  const z = sizeTicket({ stack, openUsd, poolLiqUsd: liq, ex });
+  logLine("executor", { mint, stack, raw: stack * ex.stack_pct / 100, cap: z.cap, size: z.size, mode: "PAPER", status: z.skip ? "skipped" : "sent", link: coin_url(mint, "solana") });
+  if (z.skip) return execSkip(c, z.skip);
+  const pct = round2(100 * z.size / stack), rk = S().risk;
+  c.signal = { ts: Date.now(), price, size: z.size, pct, link: coin_url(mint, "solana"), mode: "PAPER", status: "sent" };
+  emit("signal", { mint, ...c.signal });
+  push(`Buy ${coinName(mint)} · ${fmtUsd(z.size)} · ${fmt1(pct)}% of stack\nAuditor ${S().auditor.enabled ? "8/8" : "off"} · Analyst ${c.verdict?.score ?? "?"} · stop -${rk.stop_pct}% · trail ${rk.trail_pct}%`, mint, "Buy on FOMO", { kind: "buy" });
+  // PAPER: fill at the signal price at once
+  const pos = { id: nextId(), mint, name: coinName(mint), opened_at: Date.now(), entry: price, size: z.size, peak: price, stopPct: rk.stop_pct, trail_active: false, mode: "PAPER", noPrice: 0 };
+  DB.positions.push(pos); DB.cash = round2(DB.cash - z.size); DB.counts.trades++;
+  c.signal.status = "bought"; c.status = "open";
+  decision("executor", mint, "bought", fmtUsd(z.size) + " · " + fmt1(pct) + "%");
+  addActivity("bought", mint, "Executor", "Bought " + coinName(mint), "Executor · " + timeStr(Date.now()), fmtUsd(z.size) + " · " + fmt1(pct) + "% of stack");
+  emit("fill", { mint, pos }); saveDB();
+}
+function execSkip(c, reason) {
+  c.status = "skipped"; c.reason = reason; c.signal = { status: "skipped", reason, ts: Date.now() };
+  decision("executor", c.mint, "skip", reason);
+  addActivity("rejected", c.mint, "Executor", "Rejected " + coinName(c.mint), "Executor · " + reason, "Skipped");
+  saveDB();
+}
+const timeStr = t => new Date(t).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
+
+// ================= AGENT 5 · RISK =================
+async function riskPoll() {
+  const open = openPositions(); if (!open.length) return;
+  let pairs;
+  try { pairs = await dexBatch([...new Set(open.map(p => p.mint))]); }
+  catch (e) { for (const p of open) noPriceTick(p); logLine("risk", { missedPoll: e.message }); return; }
+  const rk = S().risk, now = Date.now();
+  for (const p of open) {
+    const pair = pickPumpswapPair(pairs[p.mint]);
+    const price = num(pair?.priceUsd);
+    if (!pair || !price) { noPriceTick(p); continue; }
+    p.noPrice = 0; writePrice(p.mint, pair);
+    if (num(pair?.liquidity?.usd) <= 0) { closePosition(p, price, "pulled"); continue; }
+    const r = riskStep({ entry: p.entry, peak: p.peak, stopPct: p.stopPct, trail_active: p.trail_active, opened_at: p.opened_at }, price, now, rk);
+    p.peak = r.pos.peak; p.trail_active = r.pos.trail_active;
+    logLine("risk", { mint: p.mint, price, peak: p.peak, stop: p.entry * (1 - p.stopPct / 100), trail: p.trail_active ? p.peak * (1 - rk.trail_pct / 100) : null, action: r.exit || "hold" });
+    if (r.exit) closePosition(p, price, r.exit);
+  }
+  emit("risk", {}); saveDB();
+}
+function noPriceTick(p) {
+  p.noPrice = (p.noPrice || 0) + 1;
+  if (p.noPrice === 4) push(`${p.name}: no price for 1 min`, p.mint, "Sell on FOMO", { kind: "sell" });
+}
+function closePosition(p, price, reason) {
+  const pc = paperClose(p.size, p.entry, price, S().desk.fees_ref_discount);
+  Object.assign(p, { closed_at: Date.now(), exit: price, exit_reason: reason, pnl: pc.pnl, fees: pc.fees, pct: pc.pct });
+  DB.cash = round2(DB.cash + pc.proceeds); DB.counts.exits++;
+  const c = DB.coins[p.mint]; if (c) c.status = "closed";
+  const rk = S().risk;
+  if (reason === "trail") { push(`Sold ${p.name} · ${signUsd(pc.pnl)} (${signPct(pc.pct)})`, p.mint, "Sell on FOMO", { kind: "sell" });
+    addActivity("sold", p.mint, "Risk", "Sold " + p.name, "Risk · trailing stop", signUsd(pc.pnl) + " · " + signPct(pc.pct)); }
+  else if (reason === "stop") { push(`${p.name} hit the -${p.stopPct}% stop · ${fmtUsd(-Math.abs(pc.pnl))}`, p.mint, "Sell on FOMO", { kind: "sell" });
+    addActivity("stopped", p.mint, "Risk", "Stopped " + p.name, "Risk · -" + p.stopPct + "% stop", fmtUsd(pc.pnl)); }
+  else if (reason === "timeout") { push(`Sell ${p.name}, dead money · ${signPct(pc.pct)} in ${rk.timeout_h}h`, p.mint, "Sell on FOMO", { kind: "sell" });
+    addActivity(pc.pnl >= 0 ? "sold" : "stopped", p.mint, "Risk", "Sold " + p.name, "Risk · timeout", signUsd(pc.pnl) + " · " + signPct(pc.pct)); }
+  else { push(`${p.name} liquidity pulled · ${signUsd(pc.pnl)}`, p.mint, "Sell on FOMO", { kind: "sell" });
+    addActivity("stopped", p.mint, "Risk", "Stopped " + p.name, "Risk · liquidity pulled", fmtUsd(pc.pnl)); }
+  decision("risk", p.mint, reason, signUsd(pc.pnl));
+  const out = { agent: "risk", mint: p.mint, name: p.name, ts: new Date().toISOString(), reason, entryPrice: p.entry, exitPrice: price, peakPrice: p.peak, pnlUsd: pc.pnl, pct: pc.pct, feesUsd: pc.fees, stopPct: p.stopPct, mode: "PAPER", status: "closed", link: coin_url(p.mint, "solana") };
+  logLine("risk", out); emit("exit", out); saveDB();
+}
+const signUsd = x => (x >= 0 ? "+" : "-") + "$" + Math.abs(x).toFixed(2);
+const signPct = x => (x >= 0 ? "+" : "") + x.toFixed(1) + "%";
+
+// ---------- coin screens: keep candles for coins nobody else polls ----------
+const watched = new Set();
+async function viewerPoll() {
+  const covered = new Set([...Object.values(DB.coins).filter(c => c.status === "waiting").map(c => c.mint), ...openPositions().map(p => p.mint)]);
+  const list = [...watched].filter(m => !covered.has(m)).slice(-30);
+  if (!list.length) return;
+  try { const pairs = await dexBatch(list); for (const m of list) { const p = pickPumpswapPair(pairs[m]); if (p) writePrice(m, p); } emit("risk", {}); } catch {}
+}
+
+// ---------- balance + night ----------
+function sampleBalance() { DB.balance.push([Date.now(), paperBalance()]); emit("balance", {}); saveDB(); }
+function nightTicketCheck() {
+  const t = ticketCheck(paperBalance(), S().executor);
+  if (t.status !== "ok") push(t.msg, null, null, { kind: "warn" });
+  return t;
+}
+function buildReport() {
+  const since = DB.nightStart, now = Date.now();
+  const closed = DB.positions.filter(p => p.closed_at && p.closed_at >= since);
+  const coins = Object.values(DB.coins).filter(c => c.seenAt >= since);
+  const kills = {}, refusals = {}, analystRej = [];
+  for (const c of coins) {
+    if (c.status === "killed") { const k = (c.reason || "").replace(/[\d.,$K%+]+/g, "#").trim(); kills[k] = (kills[k] || 0) + 1; }
+    if (c.audit && !c.audit.passed && c.audit.layers?.length) { const l = c.audit.layers.find(x => x.pass === false); if (l) (refusals[l.name] = refusals[l.name] || []).push({ mint: c.mint, name: coinName(c.mint), value: l.value, ts: c.audit.ts }); }
+    if (c.verdict && !c.verdict.passed) analystRej.push({ mint: c.mint, name: coinName(c.mint), rule: c.verdict.failed?.[0] });
+  }
+  return {
+    ts: now, from: since, startBalance: DB.nightStartBalance, endBalance: paperBalance(),
+    red: closed.filter(p => p.pnl < 0).map(slimPos), green: closed.filter(p => p.pnl >= 0).map(slimPos),
+    seen: coins.length, kills, refusals, analystRej, fees: round2(closed.reduce((s, p) => s + (p.fees || 0), 0)),
+    jevTokens: coins.reduce((s, c) => s + num(c.verdict?.inputTokens), 0),
+    layer8Killed: coins.filter(c => c.audit?.layer8Down).length, hours: round2((now - since) / 3600e3),
+  };
+}
+const slimPos = p => ({ mint: p.mint, name: p.name, entry: p.entry, exit: p.exit, pnl: p.pnl, pct: p.pct, reason: p.exit_reason, fees: p.fees });
+function endNight() {
+  const r = buildReport(); DB.reports.push(r);
+  if (r.hours >= 4) DB.fullPaperNights++;
+  DB.skips = {}; DB.nightStart = Date.now(); DB.nightStartBalance = paperBalance(); DB.counts = freshCounts();
+  for (const a of AGENTS) DB.decisions[a] = [];
+  DB.runners = DB.runners.filter(x => x.ts > Date.now() - 24 * 3600e3);
+  saveDB(true); emit("night", r); nightTicketCheck(); return r;
+}
+
+// ---------- settings changes ----------
+function setSetting(group, key, value, who = "app") {
+  const v = validateSetting(group, key, value);
+  if (!v.ok) return v;
+  const old = DB.settings[group][key];
+  DB.settings[group][key] = v.value;
+  DB.changeLog.push({ ts: Date.now(), key: group + "." + key, old, new: v.value, who });
+  if (DB.changeLog.length > 200) DB.changeLog.shift();
+  if (group === "risk" && key === "stop_pct") for (const p of openPositions()) { const n = applyStopSetting(p, v.value); p.stopPct = n.stopPct; }
+  if (group === "desk" && key === "rpc_url") { try { localStorage.setItem("gb_rpc", v.value); } catch {} runAudit.l8Warned = false; }
+  if (group === "executor" && ["stack_pct", "below_min", "min_ticket_usd"].includes(key)) nightTicketCheck();
+  if (group === "scanner" && key === "poll_s") startLoop("scanner", v.value * 1000, scannerPoll);
+  if (group === "risk" && key === "poll_s") startLoop("risk", v.value * 1000, riskPoll);
+  saveDB(); emit("settings", { group, key, old, value: v.value });
+  return { ok: true, old, value: v.value };
+}
+function setPaused(agent, paused) {
+  if (agent === "risk" && paused && openPositions().length) return { ok: false, error: "Risk can't pause while a position is open" };
+  DB.paused[agent] = paused; saveDB(); emit("paused", { agent, paused }); return { ok: true };
+}
+
+// ---------- start ----------
+let wakeLock = null;
+async function keepAwake() {
+  try { if ("wakeLock" in navigator && !document.hidden) { wakeLock = await navigator.wakeLock.request("screen"); } } catch {}
+}
+function startDesk() {
+  loadDB();
+  // re-queue work that was in flight when the page closed
+  for (const c of Object.values(DB.coins)) {
+    if (c.status === "passed") auditorQueue.push(c.mint);
+    if (c.status === "audited" && !c.verdict) analystQueue.push(c.mint);
+    if (c.status === "scored" && !c.signal) executorQueue.push(c.mint);
+  }
+  scannerConnect();
+  startLoop("scanner", S().scanner.poll_s * 1000, async () => { scannerWatch(); await scannerPoll(); });
+  startLoop("auditor", 1500, auditorTick);
+  startLoop("analyst", 1500, analystTick);
+  startLoop("executor", 1500, executorTick);
+  startLoop("risk", S().risk.poll_s * 1000, riskPoll);
+  setInterval(viewerPoll, 60e3);
+  setInterval(sampleBalance, 60e3);
+  setInterval(watchdog, 30e3);
+  keepAwake();
+  document.addEventListener("visibilitychange", () => { if (!document.hidden) { keepAwake(); scannerWatch(); } else saveDB(true); });
+  window.addEventListener("pagehide", () => saveDB(true));
+  if (!DB.startedOnce) { DB.startedOnce = true; nightTicketCheck(); }
+  saveDB();
+}
+
+// ===== ui.js · iPhone screens =====
+const $ = s => document.querySelector(s);
+const el = (tag, attrs = {}, ...kids) => {
+  const e = document.createElement(tag);
+  for (const [k, v] of Object.entries(attrs)) {
+    if (k === "class") e.className = v; else if (k === "text") e.textContent = v;
+    else if (k.startsWith("on")) e.addEventListener(k.slice(2), v); else if (v !== null && v !== undefined && v !== false) e.setAttribute(k, v === true ? "" : v);
+  }
+  for (const k of kids.flat()) if (k != null) e.append(k.nodeType ? k : document.createTextNode(k));
+  return e;
+};
+const reduced = matchMedia("(prefers-reduced-motion: reduce)").matches;
+const ICON = {
+  home: '<path d="M3 11l9-7 9 7v9a1 1 0 0 1-1 1h-5v-6h-6v6H4a1 1 0 0 1-1-1z"/>',
+  agents: '<rect x="3" y="4" width="7" height="7" rx="2"/><rect x="14" y="4" width="7" height="7" rx="2"/><rect x="3" y="14" width="7" height="7" rx="2"/><rect x="14" y="14" width="7" height="7" rx="2"/>',
+  activity: '<path d="M3 12h4l3 8 4-16 3 8h4"/>',
+  account: '<circle cx="12" cy="8" r="4"/><path d="M4 21c1.5-4 4.5-6 8-6s6.5 2 8 6"/>',
+  search: '<circle cx="11" cy="11" r="7"/><path d="M20 20l-4-4"/>',
+  bell: '<path d="M6 16V11a6 6 0 0 1 12 0v5l2 2H4z"/><path d="M10 20a2 2 0 0 0 4 0"/>',
+};
+const svg = name => `<svg viewBox="0 0 24 24" aria-hidden="true">${ICON[name]}</svg>`;
+let tab = "home", range = "LIVE";
+const ACCENT = { scanner: "var(--cyan)", auditor: "var(--fg)", analyst: "var(--yellow)", executor: "var(--green)", risk: "var(--pink)" };
+
+// ---------- shell ----------
+function buildShell() {
+  document.body.innerHTML = "";
+  document.body.append(
+    el("main", { id: "home", class: "screen", "aria-label": "Home" }),
+    el("main", { id: "agents", class: "screen", hidden: true, "aria-label": "Agents" }),
+    el("main", { id: "activity", class: "screen", hidden: true, "aria-label": "Activity" }),
+    el("main", { id: "account", class: "screen", hidden: true, "aria-label": "Account" }),
+    el("section", { id: "sheet", class: "sheet", hidden: true, role: "dialog" }),
+    el("div", { class: "toasts", id: "toasts", "aria-live": "polite" }),
+  );
+  const bar = el("nav", { class: "tabbar", role: "tablist" });
+  for (const [k, label] of [["home", "Home"], ["agents", "Agents"], ["activity", "Activity"], ["account", "Account"]]) {
+    const b = el("button", { role: "tab", "aria-selected": String(k === tab), onclick: () => showTab(k) });
+    b.innerHTML = svg(k) + `<span>${label}</span>`; bar.append(b);
+  }
+  document.body.append(bar);
+}
+function showTab(k) {
+  tab = k;
+  for (const t of ["home", "agents", "activity", "account"]) $("#" + t).hidden = t !== k;
+  document.querySelectorAll(".tabbar button").forEach((b, i) => b.setAttribute("aria-selected", String(["home", "agents", "activity", "account"][i] === k)));
+  render();
+}
+function navbar() {
+  const unread = DB.pushes.some(p => !p.read);
+  const n = el("div", { class: "nav" },
+    el("button", { class: "iconbtn", "aria-label": "Account", onclick: () => showTab("account") }, el("span", { class: "avatar", text: (S().desk.fomo_handle || "?")[0].toUpperCase() })),
+    el("button", { class: "title grow", onclick: () => showTab("agents") }, "Grok Bot ", el("span", { class: "sec", text: "›" })),
+  );
+  const sb = el("button", { class: "iconbtn", "aria-label": "Search", onclick: openSearch }); sb.innerHTML = svg("search");
+  const bb = el("button", { class: "iconbtn", "aria-label": unread ? "Alerts, unread" : "Alerts", onclick: openBell }); bb.innerHTML = svg("bell");
+  if (unread) bb.append(el("span", { class: "dot" }));
+  n.append(sb, bb); return n;
+}
+function errorRow() {
+  const stale = Date.now() - lastOk > 45e3 && failStreak > 2;
+  const wsDown = wsState !== "open" && wsState !== "connecting";
+  if (!stale && !wsDown) return null;
+  const n = Math.max(1, Math.ceil(((scannerWatch.nextTry || Date.now()) - Date.now()) / 1000));
+  return el("div", { class: "errorrow", role: "alert", text: `Desk offline · retrying in ${n}s · last update ${timeStr(lastOk)}` });
+}
+
+// ---------- odometer ----------
+function odometer(container, text) {
+  const prev = container.dataset.v || "";
+  if (prev === text) return; container.dataset.v = text;
+  if (reduced || !prev || prev.length !== text.length) {
+    container.innerHTML = "";
+    for (const ch of text) {
+      if (/\d/.test(ch)) { const d = el("span", { class: "d" }); const col = el("span", { class: "col" }); for (let i = 0; i < 10; i++) col.append(el("span", { text: String(i) })); col.style.transform = `translateY(-${Number(ch)}em)`; d.append(col); container.append(d); }
+      else container.append(el("span", { text: ch }));
+    }
+    return;
+  }
+  const kids = [...container.children]; let stagger = 0;
+  for (let i = text.length - 1; i >= 0; i--) {
+    const col = kids[i]?.querySelector(".col");
+    if (col && text[i] !== prev[i]) { col.style.transitionDelay = stagger + "ms"; col.style.transform = `translateY(-${Number(text[i])}em)`; stagger += 30; }
+  }
+}
+
+// ---------- canvas helpers ----------
+function canvasFor(c) {
+  const dpr = window.devicePixelRatio || 1, r = c.getBoundingClientRect();
+  c.width = Math.max(1, Math.round(r.width * dpr)); c.height = Math.max(1, Math.round(r.height * dpr));
+  const g = c.getContext("2d"); g.setTransform(dpr, 0, 0, dpr, 0, 0); return { g, w: r.width, h: r.height };
+}
+const css = v => getComputedStyle(document.documentElement).getPropertyValue(v).trim();
+const RANGE_MS = { LIVE: 30 * 60e3, "1H": 3600e3, "4H": 4 * 3600e3, "1D": 86400e3, "1W": 7 * 86400e3, ALL: Infinity };
+function drawHomeChart(c) {
+  if (!c.isConnected) return;
+  const { g, w, h } = canvasFor(c); if (w < 40 || h < 40) return;
+  const now = Date.now(), from = range === "ALL" ? 0 : now - RANGE_MS[range];
+  let pts = DB.balance.filter(p => p[0] >= from);
+  pts = pts.concat([[now, paperBalance()]]);
+  const start = DB.nightStartBalance;
+  const vals = pts.map(p => p[1]).concat([start]);
+  let lo = Math.min(...vals), hi = Math.max(...vals); if (hi - lo < 1) { hi += 1; lo -= 1; }
+  const padT = 46, padB = 12, t0 = pts[0][0], t1 = now === t0 ? t0 + 1 : now;
+  const X = t => 16 + (w - 32) * (t - t0) / (t1 - t0), Y = v => padT + (h - padT - padB) * (1 - (v - lo) / (hi - lo));
+  // dashed start line
+  g.strokeStyle = css("--fg3"); g.setLineDash([4, 4]); g.lineWidth = 1; g.beginPath(); g.moveTo(0, Y(start)); g.lineTo(w, Y(start)); g.stroke(); g.setLineDash([]);
+  if (pts.length < 2) return;
+  const green = css("--green");
+  const grad = g.createLinearGradient(0, padT, 0, h); grad.addColorStop(0, "rgba(0,211,90,.28)"); grad.addColorStop(1, "rgba(0,211,90,0)");
+  g.beginPath(); pts.forEach((p, i) => i ? g.lineTo(X(p[0]), Y(p[1])) : g.moveTo(X(p[0]), Y(p[1])));
+  g.lineTo(X(pts[pts.length - 1][0]), h); g.lineTo(X(pts[0][0]), h); g.closePath(); g.fillStyle = grad; g.fill();
+  g.beginPath(); pts.forEach((p, i) => i ? g.lineTo(X(p[0]), Y(p[1])) : g.moveTo(X(p[0]), Y(p[1]))); g.strokeStyle = green; g.lineWidth = 2; g.stroke();
+  // marks, never overlapping: a later mark moves up a row
+  const marks = DB.activity.filter(a => a.ts >= t0 && ["bought", "sold", "stopped"].includes(a.kind));
+  const rows = []; g.font = "600 11px -apple-system,system-ui"; g.textBaseline = "bottom";
+  for (const m of marks) {
+    const pos = DB.positions.find(p => p.mint === m.mint);
+    const label = m.kind === "bought" ? "Bought " + m.title.replace(/^Bought /, "") : m.kind === "sold" ? (m.value || "").split(" · ")[0] : `-${pos?.stopPct ?? S().risk.stop_pct}% · ${(m.value || "").replace(/^-/, "-")}`;
+    const color = m.kind === "bought" ? css("--blue") : m.kind === "sold" ? green : css("--red");
+    const tw = g.measureText(label).width + 12, x = Math.min(Math.max(X(m.ts) - tw / 2, 2), w - tw - 2);
+    let r = 0; while (rows[r] && rows[r].some(([a, b]) => x < b + 4 && x + tw > a - 4)) r++;
+    (rows[r] = rows[r] || []).push([x, x + tw]);
+    const y = 18 + r * 22; if (y > padT + 30) continue;
+    g.fillStyle = color; g.beginPath(); g.roundRect ? g.roundRect(x, y - 16, tw, 18, 9) : g.rect(x, y - 16, tw, 18); g.fill();
+    g.fillStyle = m.kind === "sold" || m.kind === "bought" && false ? "#000" : "#fff"; if (m.kind === "sold") g.fillStyle = "#000";
+    g.fillText(label, x + 6, y);
+    g.strokeStyle = color; g.globalAlpha = .4; g.beginPath(); g.moveTo(X(m.ts), y + 2); g.lineTo(X(m.ts), Y(balanceAt(m.ts))); g.stroke(); g.globalAlpha = 1;
+  }
+}
+function balanceAt(t) { let v = DB.nightStartBalance; for (const p of DB.balance) { if (p[0] > t) break; v = p[1]; } return v; }
+function drawRing(c, score) {
+  if (!c.isConnected) return;
+  const { g, w, h } = canvasFor(c); const r = Math.min(w, h) / 2 - 8, cx = w / 2, cy = h / 2;
+  if (r <= 0) return;
+  g.lineWidth = 10; g.lineCap = "round"; g.strokeStyle = css("--card2"); g.beginPath(); g.arc(cx, cy, r, 0, Math.PI * 2); g.stroke();
+  if (score != null) {
+    g.strokeStyle = score >= S().analyst.min_score ? css("--green") : css("--yellow");
+    g.beginPath(); g.arc(cx, cy, r, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * score / 100); g.stroke();
+  }
+  g.fillStyle = css("--fg"); g.font = "700 34px -apple-system,system-ui"; g.textAlign = "center"; g.textBaseline = "middle";
+  g.fillText(score == null ? "–" : String(score), cx, cy);
+}
+function candles(mint) {
+  const pts = (DB.prices[mint] || []).filter(p => p[0] > Date.now() - 90 * 60e3);
+  const bars = []; let prevVol = null;
+  for (const [t, p, v] of pts) {
+    const m = Math.floor(t / 60e3) * 60e3; let b = bars[bars.length - 1];
+    if (!b || b.t !== m) { b = { t: m, o: p, h: p, l: p, c: p, v: 0 }; bars.push(b); }
+    b.h = Math.max(b.h, p); b.l = Math.min(b.l, p); b.c = p;
+    if (prevVol != null) b.v += Math.max(0, v - prevVol); prevVol = v;
+  }
+  return bars;
+}
+function exitLine(p) {
+  const stop = p.entry * (1 - p.stopPct / 100);
+  return p.trail_active ? Math.max(stop, p.peak * (1 - S().risk.trail_pct / 100)) : stop;
+}
+function drawCandles(c, mint, pos) {
+  if (!c.isConnected) return;
+  const { g, w, h } = canvasFor(c); if (w < 40 || h < 60) return;
+  const bars = candles(mint).slice(-60);
+  if (!bars.length) { g.fillStyle = css("--fg2"); g.font = "14px -apple-system,system-ui"; g.textAlign = "center"; g.fillText("Collecting prices, a candle per minute", w / 2, h / 2); return; }
+  const volH = 40, padT = 12, padB = 8 + volH;
+  let lo = Math.min(...bars.map(b => b.l)), hi = Math.max(...bars.map(b => b.h));
+  const line = pos && !pos.closed_at ? exitLine(pos) : null;
+  if (line) { lo = Math.min(lo, line); hi = Math.max(hi, line); }
+  if (hi === lo) { hi *= 1.01; lo *= .99; }
+  const Y = v => padT + (h - padT - padB) * (1 - (v - lo) / (hi - lo));
+  const bw = (w - 32) / Math.max(bars.length, 20), maxV = Math.max(...bars.map(b => b.v), 1);
+  bars.forEach((b, i) => {
+    const x = 16 + i * bw + bw / 2, up = b.c >= b.o; g.strokeStyle = g.fillStyle = up ? css("--green") : css("--red");
+    g.lineWidth = 1; g.beginPath(); g.moveTo(x, Y(b.h)); g.lineTo(x, Y(b.l)); g.stroke();
+    const y1 = Y(Math.max(b.o, b.c)), y2 = Y(Math.min(b.o, b.c)); g.fillRect(x - bw * .35, y1, bw * .7, Math.max(1, y2 - y1));
+    g.globalAlpha = .35; const vh = volH * b.v / maxV; g.fillRect(x - bw * .35, h - 4 - vh, bw * .7, vh); g.globalAlpha = 1;
+  });
+  if (line) {
+    g.strokeStyle = css("--orange"); g.setLineDash([6, 4]); g.lineWidth = 1.5; g.beginPath(); g.moveTo(0, Y(line)); g.lineTo(w, Y(line)); g.stroke(); g.setLineDash([]);
+    g.fillStyle = css("--orange"); g.font = "600 11px -apple-system,system-ui"; g.textAlign = "left"; g.textBaseline = "bottom"; g.fillText("Risk trailing stop", 16, Y(line) - 3);
+  }
+}
+
+// ---------- agent cards ----------
+function agentCard(a, compact = true) {
+  const card = el("article", { class: compact ? "acard" : "agentfull", "aria-label": NAMES[a] });
+  const paused = DB.paused[a];
+  const head = el("div", { class: "head" }, el("span", { class: "name", style: `color:${ACCENT[a]}`, text: NAMES[a] }),
+    el("span", { class: "small sec" }, el("span", { class: "status" + (paused ? " off" : ""), "aria-hidden": "true" }), paused ? " Paused" : " Running"));
+  card.append(head);
+  const ct = DB.counts;
+  if (a === "scanner") {
+    card.append(el("div", { class: "big", text: ct.pools + " pools" }));
+    const feed = el("div", { class: "feed" });
+    const decs = DB.decisions.scanner.slice(-6).reverse();
+    if (!decs.length) feed.append(el("div", { class: "empty", text: wsState === "open" ? "Listening for graduations" : "Connecting to graduations" }));
+    for (const d of decs) feed.append(el("div", { class: "f " + (d.verdict === "pass" ? "pass" : "kill") }, el("span", { class: "n", text: d.verdict === "pass" ? `${d.name} · ${d.reason}` : d.name }), d.verdict === "pass" ? null : el("span", { class: "r", text: d.reason })));
+    const waiting = Object.values(DB.coins).filter(c => c.status === "waiting").length;
+    card.append(feed, el("div", { class: "small sec", text: waiting + " in the waiting room" }));
+  } else if (a === "auditor") {
+    const last = Object.values(DB.coins).filter(c => c.audit && !c.audit.skipped).sort((x, y) => y.audit.ts - x.audit.ts)[0];
+    card.append(el("div", { class: "big", text: ct.audited + " taken apart" }));
+    const strips = el("div", { class: "strips", "aria-hidden": "true" });
+    for (let i = 1; i <= 8; i++) { const l = last?.audit.layers.find(x => x.n === i); strips.append(el("i", { class: l ? (l.pass === true ? "ok" : l.pass === false ? "bad" : "") : (last?.audit.running && last.audit.layers.length + 1 === i ? "run" : "") })); }
+    card.append(strips);
+    card.append(el("div", { class: "grow" }, !last ? el("div", { class: "sec", text: "No coin taken apart yet" }) :
+      el("button", { class: "li", style: "padding:0;min-height:44px", onclick: () => openAudit(last.mint) }, el("span", { class: "grow" },
+        el("div", { class: "t", text: coinName(last.mint) }),
+        el("div", { class: "s " + (last.audit.running ? "cyan" : last.audit.passed ? "green" : "red"), text: last.audit.running ? "taking apart..." : last.audit.passed ? "8/8 → Executor" : last.audit.reason })))));
+    card.append(el("div", { class: "small sec", text: ct.rejected + " rejected" }));
+  } else if (a === "analyst") {
+    const last = Object.values(DB.coins).filter(c => c.verdict).sort((x, y) => y.verdict.ts - x.verdict.ts)[0];
+    card.append(el("div", { class: "big", text: "Scoring" }));
+    const cv = el("canvas", { class: "ring", "aria-label": "Last score " + (last?.verdict.score ?? "none") });
+    card.append(cv); requestAnimationFrame(() => drawRing(cv, last?.verdict.score ?? null));
+    card.append(el("div", { class: "small sec", style: "text-align:center", text: last ? `${coinName(last.mint)} · ${last.verdict.passed ? "passed" : last.verdict.failed?.[0]} · ${S().analyst.mode === "rules" ? "rules mode" : "Jev"}` : "Waiting for a coin" }));
+  } else if (a === "executor") {
+    const lastFill = [...DB.positions].sort((x, y) => y.opened_at - x.opened_at)[0];
+    card.append(el("div", { class: "big", text: ct.trades + " trades" }));
+    card.append(el("div", { class: "sec", text: lastFill ? `${fmtUsd(lastFill.size)} · ${S().executor.stack_pct}% of stack` : `${S().executor.stack_pct}% of stack per coin` }));
+    const bar = el("div", { class: "bar" }, el("i", { id: "exbar" }));
+    const fresh = lastFill && Date.now() - lastFill.opened_at < 1500;
+    card.append(el("div", { class: "grow" }), el("div", { class: "small sec", id: "exlabel", text: lastFill ? (fresh ? "Executing... 0%" : "✓ Filled " + lastFill.name) : "Waiting for a scored coin" }), bar);
+    if (lastFill) requestAnimationFrame(() => { const i = $("#exbar"); if (i) i.style.width = "100%"; });
+  } else if (a === "risk") {
+    const open = openPositions(), lastExit = [...DB.positions].filter(p => p.closed_at).sort((x, y) => y.closed_at - x.closed_at)[0];
+    card.append(el("div", { class: "big", text: open.length ? "Guarding" : "Idle" }));
+    card.append(el("div", { class: "sec", text: open.length ? open.length + " open · " + open.map(p => p.name).join(", ") : lastExit ? (lastExit.exit_reason === "trail" ? "Trailed out " : "Stopped ") + lastExit.name : "No position yet" }));
+    card.append(el("div", { class: "grow" }), el("div", { class: "pills" }, el("span", { class: "pill mono redp", text: "stop -" + S().risk.stop_pct + "%" }), el("span", { class: "pill mono greenp", text: "trail " + S().risk.trail_pct + "%" })));
+  }
+  if (!compact) {
+    const sw = el("button", { class: "switch", role: "switch", "aria-checked": String(!paused), "aria-label": (paused ? "Resume " : "Pause ") + NAMES[a],
+      disabled: a === "risk" && openPositions().length > 0 && !paused ? true : null,
+      onclick: () => { const r = setPaused(a, !paused); if (!r.ok) toast({ text: r.error }); render(); } });
+    head.replaceChildren(el("span", { class: "name", style: `color:${ACCENT[a]}`, text: NAMES[a] }), el("span", { class: "grow" }), el("span", { class: "small sec", text: paused ? "Paused" : "Running" }), el("span", { class: "switchwrap" }, sw));
+    const dec = el("div", { class: "dec" });
+    const decs = DB.decisions[a].slice().reverse();
+    if (!decs.length) dec.append(el("span", { class: "sec", style: "grid-column:1/-1", text: "No decisions yet tonight" }));
+    for (const d of decs) dec.append(el("span", { class: "sec", text: timeStr(d.ts) }), el("a", { href: coin_url(d.mint, "solana"), target: "_blank", rel: "noopener", text: d.name }), el("span", { class: "r", text: d.verdict + (d.reason ? " · " + d.reason : "") }));
+    card.append(el("div", { class: "small sec", text: "Last 20 decisions" }), dec, el("button", { class: "link", onclick: () => { showTab("account"); setTimeout(() => document.getElementById("set-" + a)?.scrollIntoView({ block: "start" }), 50); }, text: "Settings ›" }));
+  }
+  return card;
+}
+
+// ---------- activity rows ----------
+function activityRow(a) {
+  const icon = { bought: "B", sold: "S", stopped: "!", rejected: "×" }[a.kind];
+  return el("button", { class: "li", onclick: () => a.kind === "rejected" && /Auditor/.test(a.subtitle) ? openAudit(a.mint) : openCoin(a.mint) },
+    el("span", { class: "ic " + a.kind, text: icon, "aria-hidden": "true" }),
+    el("span", { class: "grow" }, el("div", { class: "t", text: a.title }), el("div", { class: "s", text: a.subtitle })),
+    el("span", { class: "v " + (a.kind === "sold" ? "green" : a.kind === "stopped" ? "red" : a.kind === "rejected" ? "sec" : ""), text: a.value }));
+}
+
+// ---------- screens ----------
+function renderHome() {
+  const s = $("#home"); const keepScroll = s.querySelector(".carousel")?.scrollLeft || 0;
+  const bal = paperBalance(), start = DB.nightStartBalance;
+  const todayPct = start ? 100 * (bal - start) / start : 0;
+  s.replaceChildren();
+  s.append(navbar());
+  const er = errorRow(); if (er) s.append(er);
+  const odo = el("div", { class: "odo", "aria-label": fmtUsd(bal) });
+  s.append(el("div", { class: "balance" }, odo, S().desk.mode === "PAPER" ? el("span", { class: "pill paper", text: "PAPER" }) : null));
+  odometer(odo, fmtUsd(bal)); homeOdo = odo;
+  s.append(el("div", { class: "today" }, el("span", { class: todayPct >= 0 ? "green" : "red", text: (todayPct >= 0 ? "+" : "") + todayPct.toFixed(2) + "% today" }), el("span", { class: "pill mult", text: (bal / start).toFixed(2) + "×" })));
+  const cw = el("div", { class: "chartwrap" }); const cv = el("canvas", { "aria-label": "Balance chart" }); cw.append(cv);
+  if (!DB.positions.length) cw.append(el("div", { class: "chartempty", text: "Waiting for the first trade" }));
+  s.append(cw); requestAnimationFrame(() => drawHomeChart(cv));
+  const rg = el("div", { class: "ranges", role: "group", "aria-label": "Chart range" });
+  for (const r of ["LIVE", "1H", "4H", "1D", "1W", "ALL"]) rg.append(el("button", { "aria-pressed": String(r === range), text: r, onclick: () => { range = r; render(); } }));
+  s.append(rg);
+  const running = AGENTS.filter(a => !DB.paused[a]).length;
+  s.append(el("div", { class: "sectionhead" }, el("h2", { text: `Agents · ${running} running` })));
+  const car = el("div", { class: "carousel" }); for (const a of AGENTS) car.append(agentCard(a, true)); s.append(car);
+  requestAnimationFrame(() => { car.scrollLeft = keepScroll; });
+  s.append(el("div", { class: "sectionhead" }, el("h2", { text: "Activity" }), el("button", { class: "link", text: "See all", onclick: () => showTab("activity") })));
+  const rows = DB.activity.slice(-5).reverse();
+  s.append(rows.length ? el("div", { class: "list" }, rows.map(activityRow)) : el("div", { class: "list" }, el("div", { class: "li sec", text: "Nothing yet tonight" })));
+}
+let homeOdo = null;
+function renderAgents() {
+  const s = $("#agents"); s.replaceChildren(navbar(), el("h2", { text: "Agents" }));
+  const st = el("div", { class: "stack" }); for (const a of AGENTS) st.append(agentCard(a, false)); s.append(st);
+}
+let actShown = 30;
+function renderActivity() {
+  const s = $("#activity"); s.replaceChildren(navbar(), el("h2", { text: "Activity" }));
+  const rows = DB.activity.slice().reverse();
+  if (!rows.length) { s.append(el("div", { class: "list" }, el("div", { class: "li sec", text: "Nothing yet tonight" }))); return; }
+  s.append(el("div", { class: "list" }, rows.slice(0, actShown).map(activityRow)));
+  if (rows.length > actShown) s.append(el("button", { class: "btn grey", style: "margin-top:12px", text: "Show 30 more", onclick: () => { actShown += 30; render(); } }));
+}
+function renderAccount() {
+  const s = $("#account"); const y = s.scrollTop;
+  s.replaceChildren(navbar(), el("h2", { text: "Account" }));
+  const st = el("div", { class: "stack" });
+  // mode
+  st.append(el("div", { class: "group" },
+    el("div", { class: "set" }, el("div", { class: "top" }, el("span", { text: "Mode" }),
+      el("div", { class: "seg", style: "width:180px" }, el("button", { "aria-pressed": "true", text: "PAPER" }), el("button", { "aria-pressed": "false", disabled: true, text: "LIVE" }))),
+      el("span", { class: "small sec", text: "LIVE unlocks on the PC desk after a full PAPER night (" + DB.fullPaperNights + " so far)." })),
+    el("div", { class: "set" }, el("div", { class: "top" }, el("span", { text: "PAPER stack now" }), el("b", { text: fmtUsd(paperBalance()) })),
+      el("span", { class: "small sec", text: "Free: " + fmtUsd(DB.cash) + " · open: " + openPositions().length }))));
+  // FOMO
+  const handle = S().desk.fomo_handle;
+  st.append(el("div", { class: "list" },
+    el("a", { class: "li", href: profile_url(handle), target: "_blank", rel: "noopener" }, el("span", { class: "grow" }, el("div", { class: "t", text: "Your FOMO profile" }), el("div", { class: "s", text: "@" + handle })), el("span", { class: "sec", text: "›" })),
+    el("button", { class: "li", onclick: invite }, el("span", { class: "grow" }, el("div", { class: "t", text: "Invite a friend" }), el("div", { class: "s", id: "invitemsg", text: "Share your FOMO sign-up link" })), el("span", { class: "sec", text: "›" }))));
+  // connections
+  st.append(el("p", { class: "gl", text: "Connections" }));
+  const rpcIn = el("input", { type: "password", id: "rpcurl", value: S().desk.rpc_url, autocomplete: "off", autocapitalize: "off", spellcheck: "false", placeholder: "https://mainnet.helius-rpc.com/?api-key=…" });
+  const jevIn = el("input", { type: "password", id: "jevkey", autocomplete: "off", autocapitalize: "off", spellcheck: "false", placeholder: "apikey_… (optional)" });
+  try { jevIn.value = localStorage.getItem("gb_jev") || ""; } catch {}
+  st.append(el("div", { class: "group" },
+    el("label", { class: "set", for: "rpcurl" }, el("span", { text: "Solana RPC URL" }), rpcIn, el("span", { class: "small sec", text: "Stays on this phone. Needed for the Auditor." })),
+    el("label", { class: "set", for: "jevkey" }, el("span", { text: "Jev key" }), jevIn, el("span", { class: "small sec", text: "Safari can't reach Jev yet, so the Analyst uses rules mode here." })),
+    el("div", { class: "set" }, el("button", { class: "btn grey", text: "Save connections", onclick: () => { setSetting("desk", "rpc_url", rpcIn.value); try { localStorage.setItem("gb_jev", jevIn.value.replace(/[^\x21-\x7E]/g, "")); } catch {} toast({ text: "Saved on this phone" }); } })),
+    el("div", { class: "set" }, el("div", { class: "top" }, el("span", { text: "Telegram" }), el("span", { class: "sec", text: "Not connected" })), el("span", { class: "small sec", text: "Comes with the PC desk. Tonight, alerts show in this app while it's open." }))));
+  // command box
+  st.append(el("p", { class: "gl", text: "Talk to the desk" }));
+  const cin = el("input", { id: "cmdin", placeholder: "status · why X · set stop to -8% · invite", autocapitalize: "off", autocomplete: "off" });
+  const cout = el("div", { class: "cmdout", id: "cmdout" });
+  const send = () => { const r = runCommand(cin.value); cout.replaceChildren(...r); cin.value = ""; };
+  cin.addEventListener("keydown", e => { if (e.key === "Enter") send(); });
+  st.append(el("div", { class: "group" }, el("div", { class: "set" }, el("div", { class: "cmd" }, cin, el("button", { text: "Send", onclick: send })), cout)));
+  // night
+  st.append(el("p", { class: "gl", text: "Night" }));
+  st.append(el("div", { class: "group" },
+    el("div", { class: "set" }, el("div", { class: "top" }, el("span", { text: "Started" }), el("span", { class: "sec", text: new Date(DB.nightStart).toLocaleString([], { weekday: "short", hour: "numeric", minute: "2-digit" }) }))),
+    el("div", { class: "set" }, el("button", { class: "btn", text: "End night and show report", onclick: () => openReport(endNight()) })),
+    DB.reports.length ? el("div", { class: "set" }, el("button", { class: "btn grey", text: "Last report", onclick: () => openReport(DB.reports[DB.reports.length - 1]) })) : null));
+  // settings
+  for (const [g, keys] of Object.entries(SETTINGS_SPEC)) {
+    if (g === "desk") continue;
+    st.append(el("p", { class: "gl", id: "set-" + g, text: NAMES[g] || g }));
+    const grp = el("div", { class: "group" });
+    for (const [k, spec] of Object.entries(keys)) grp.append(settingRow(g, k, spec));
+    st.append(grp);
+  }
+  st.append(el("p", { class: "gl", text: "Desk" }));
+  st.append(el("div", { class: "group" }, settingRow("desk", "push_rejects", SETTINGS_SPEC.desk.push_rejects), settingRow("desk", "fees_ref_discount", SETTINGS_SPEC.desk.fees_ref_discount), settingRow("desk", "fomo_handle", SETTINGS_SPEC.desk.fomo_handle)));
+  st.append(el("div", { class: "group" }, el("div", { class: "set" }, el("button", { class: "btn grey", text: "Run the proof page", onclick: () => { location.href = "proof.html"; } }))));
+  s.append(st); s.scrollTop = y;
+}
+let auditOffTaps = 0, auditOffTimer = null;
+function settingRow(g, k, spec) {
+  const [def, min, max, label] = spec, v = S()[g][k], id = `s-${g}-${k}`;
+  const row = el("div", { class: "set" }); const errEl = el("span", { class: "err", "aria-live": "polite" });
+  if (typeof def === "boolean") {
+    const sw = el("button", { class: "switch", role: "switch", "aria-checked": String(v), "aria-label": label });
+    if (g === "auditor" && k === "enabled" && auditOffTaps === 1) errEl.textContent = "Turning this off sends coins straight to the Analyst unchecked. Tap again to confirm.";
+    sw.onclick = () => {
+      if (g === "auditor" && k === "enabled" && v === true) {
+        auditOffTaps++;
+        if (auditOffTaps < 2) { errEl.textContent = "Turning this off sends coins straight to the Analyst unchecked. Tap again to confirm."; clearTimeout(auditOffTimer); auditOffTimer = setTimeout(() => { auditOffTaps = 0; }, 8000); return; }
+      }
+      auditOffTaps = 0; setSetting(g, k, !v); render();
+    };
+    row.append(el("div", { class: "top" }, el("span", { text: label }), el("span", { class: "switchwrap" }, sw)), errEl); return row;
+  }
+  if (["below_min", "mode"].includes(k)) {
+    const opts = k === "below_min" ? ["bump", "skip"] : g === "analyst" ? ["rules", "jev"] : ["PAPER", "LIVE"];
+    const seg = el("div", { class: "seg", style: "width:180px", role: "group", "aria-label": label });
+    for (const o of opts) seg.append(el("button", { "aria-pressed": String(o === v), disabled: (g === "desk" && o === "LIVE") ? true : null, text: o, onclick: () => { const r = setSetting(g, k, o); if (!r.ok) errEl.textContent = r.error; render(); } }));
+    row.append(el("div", { class: "top" }, el("span", { text: label }), seg), errEl); return row;
+  }
+  if (typeof def === "string") {
+    const inp = el("input", { type: "text", id, value: v, autocapitalize: "off", autocomplete: "off" });
+    inp.onchange = () => { const r = setSetting(g, k, inp.value); errEl.textContent = r.ok ? "" : r.error; };
+    row.append(el("label", { for: id, text: label }), inp, errEl); return row;
+  }
+  const step = max <= 1 ? 0.01 : max <= 100 ? (Number.isInteger(def) ? 1 : 0.5) : Math.max(1, Math.round(max / 1000));
+  const sl = el("input", { type: "range", min, max: Math.min(max, def * 10 || max), step, value: v, "aria-label": label });
+  const nb = el("input", { type: "number", id, inputmode: "decimal", value: v, step: "any" });
+  sl.oninput = () => { nb.value = sl.value; };
+  sl.onchange = () => apply(sl.value);
+  nb.onchange = () => apply(nb.value);
+  function apply(val) { const r = setSetting(g, k, val); if (!r.ok) { errEl.textContent = "Refused · " + r.error; nb.value = S()[g][k]; sl.value = S()[g][k]; } else errEl.textContent = ""; }
+  row.append(el("div", { class: "top" }, el("label", { for: id, text: label }), nb), sl, errEl); return row;
+}
+async function invite() {
+  try { if (navigator.share) { await navigator.share({ title: "FOMO", url: SIGNUP_URL }); return; } } catch (e) { if (e.name === "AbortError") return; }
+  try { await navigator.clipboard.writeText(SIGNUP_URL); $("#invitemsg").textContent = "Link copied"; } catch { $("#invitemsg").textContent = SIGNUP_URL; }
+}
+
+// ---------- sheets ----------
+let sheetMint = null, sheetKind = null;
+function openSheet(kind, mint) {
+  sheetKind = kind; sheetMint = mint; $("#sheet").hidden = false; if (mint) watched.add(mint);
+  const a = DB.coins[mint]?.audit;
+  if (kind === "audit" && a && !a.running && Date.now() - a.ts > 15e3) beamState[mint] = 8; // finished long ago: show it all
+  $("#sheet").scrollTop = 0; renderSheet();
+}
+function closeSheet() { $("#sheet").hidden = true; sheetKind = null; sheetMint = null; render(); }
+const openCoin = m => openSheet("coin", m), openAudit = m => openSheet("audit", m);
+function sheetHead(title) { return el("div", { class: "nav" }, el("button", { class: "close", onclick: closeSheet, text: "‹ Back" }), el("span", { class: "grow" }), title ? el("span", { class: "sec", text: title }) : null); }
+function renderSheet() {
+  const s = $("#sheet"); if (s.hidden) return;
+  if (sheetKind === "coin") return renderCoin(s, sheetMint);
+  if (sheetKind === "audit") return renderAuditScreen(s, sheetMint);
+}
+function renderCoin(s, mint) {
+  const c = DB.coins[mint] || { mint }, pos = DB.positions.filter(p => p.mint === mint).sort((a, b) => b.opened_at - a.opened_at)[0];
+  const open = pos && !pos.closed_at, price = lastPrice(mint), d = c.lastDex || {};
+  const ageH = c.migratedAt ? Math.floor((Date.now() - c.migratedAt) / 3600e3) : null, ageM = c.migratedAt ? Math.floor((Date.now() - c.migratedAt) / 60e3) : null;
+  const passed = c.audit?.layers?.filter(l => l.pass === true).length || 0;
+  s.replaceChildren(sheetHead());
+  s.append(el("div", { class: "coinhead" },
+    el("div", { class: "nm" }, c.name || shortAddr(mint), S().desk.mode === "PAPER" ? el("span", { class: "pill paper", style: "margin:0", text: "PAPER" }) : null,
+      c.audit ? el("button", { class: "shield" + (c.audit.passed ? "" : " bad"), onclick: () => openAudit(mint), text: "⛨ " + passed + "/8" }) : null),
+    el("div", { class: "sec", text: `${c.symbol || "?"} · Solana · ${ageM == null ? "?" : ageH ? ageH + "h" : ageM + "m"} old` })));
+  s.append(el("div", { class: "price", text: price ? fmtPrice(price) : "–" }));
+  if (pos) { const ch = 100 * ((open ? price || pos.entry : pos.exit) - pos.entry) / pos.entry; s.append(el("div", { class: ch >= 0 ? "green" : "red", text: (ch >= 0 ? "▲ " : "▼ ") + Math.abs(ch).toFixed(1) + "% since entry" })); }
+  const cw = el("div", { class: "candlewrap" }); const cv = el("canvas", { "aria-label": "1-minute candles" }); cw.append(cv); s.append(cw);
+  requestAnimationFrame(() => drawCandles(cv, mint, pos));
+  s.append(el("div", { class: "stats" },
+    el("div", {}, el("span", { class: "small sec", text: "Market cap" }), el("b", { text: d.mcap ? "$" + fmtK(d.mcap) : "–" })),
+    el("div", {}, el("span", { class: "small sec", text: "Liquidity" }), el("b", { text: d.liq ? "$" + fmtK(d.liq) : "–" })),
+    el("div", {}, el("span", { class: "small sec", text: "24h volume" }), el("b", { text: d.vol?.h24 ? "$" + fmtK(d.vol.h24) : "–" })),
+    el("div", {}, el("span", { class: "small sec", text: "Holders" }), el("b", { text: c.holders != null ? c.holders.toLocaleString() : "n/a" }))));
+  if (pos) {
+    s.append(el("div", { class: "card" }, el("div", { class: "kv" }, el("span", { text: "Your position" }), el("span", { text: fmtUsd(pos.size) + " in · Executor" })),
+      el("div", { class: "kv" }, el("span", { text: "Entry" }), el("span", { text: fmtPrice(pos.entry) })),
+      pos.closed_at ? el("div", { class: "kv" }, el("span", { text: "Closed · " + pos.exit_reason }), el("span", { class: pos.pnl >= 0 ? "green" : "red", text: signUsd(pos.pnl) + " · fees " + fmtUsd(pos.fees) })) : null));
+    if (open) {
+      const left = Math.max(0, pos.opened_at + S().risk.timeout_h * 3600e3 - Date.now());
+      s.append(el("div", { class: "card" }, el("div", { class: "kv" }, el("span", { text: "Stop line" }), el("span", { class: "red", text: fmtPrice(pos.entry * (1 - pos.stopPct / 100)) + " · -" + pos.stopPct + "%" })),
+        el("div", { class: "kv" }, el("span", { text: "Trail line" }), el("span", { class: "orange", text: pos.trail_active ? fmtPrice(pos.peak * (1 - S().risk.trail_pct / 100)) + " · " + S().risk.trail_pct + "% off peak" : "arms at +" + S().risk.trail_start_pct + "%" })),
+        el("div", { class: "kv" }, el("span", { text: "Timeout in" }), el("span", { text: Math.floor(left / 3600e3) + "h " + Math.floor(left % 3600e3 / 60e3) + "m" }))));
+    }
+  }
+  s.append(el("a", { class: "btn " + (open ? "sell" : "buy"), href: coin_url(mint, "solana"), target: "_blank", rel: "noopener", text: open ? "Sell on FOMO" : "Buy on FOMO" }));
+  s.append(el("div", { class: "small ter mono", style: "overflow-wrap:anywhere", text: mint }));
+}
+let beamState = {};
+function renderAuditScreen(s, mint) {
+  const c = DB.coins[mint] || { mint }, a = c.audit;
+  s.replaceChildren(sheetHead("Auditor"));
+  s.append(el("div", { class: "coinhead" }, el("div", { class: "nm", text: c.name || shortAddr(mint) }), el("div", { class: "sec", text: (c.symbol || "?") + " · taken apart in 8 layers" })));
+  if (!a) { s.append(el("div", { class: "empty", style: "min-height:200px", text: "No coin taken apart yet" })); s.append(auditToggle()); return; }
+  const shown = beamState[mint] ?? (reduced ? 8 : a.running ? 0 : 8);
+  const discs = el("div", { class: "discs", "aria-hidden": "true" });
+  for (let i = 1; i <= 8; i++) {
+    const l = a.layers.find(x => x.n === i), vis = i <= shown;
+    discs.append(el("div", { class: "disc " + (vis && l ? (l.pass === true ? "ok" : l.pass === false ? "bad" : "skip") : "") + (!reduced && i === shown + 1 && (l || a.running) ? " beam" : ""), text: vis && l ? (l.pass === true ? "✓" : l.pass === false ? "✕" : "") : "" }));
+  }
+  s.append(discs);
+  const rows = el("div", { class: "list layerrows" });
+  for (let i = 1; i <= 8; i++) {
+    const l = a.layers.find(x => x.n === i), vis = i <= shown;
+    rows.append(el("div", { class: "li" }, el("span", { class: "grow" }, el("div", { class: "t", text: i + " · " + LAYER_NAMES[i - 1] })),
+      el("span", { class: "v " + (vis && l ? (l.pass === true ? "green" : l.pass === false ? "red" : "ter") : "ter"), text: vis && l ? l.value : (a.running ? "…" : "") })));
+  }
+  s.append(rows);
+  if (!a.running && shown >= 8) {
+    const sig = c.signal;
+    s.append(a.passed
+      ? el("div", { class: "card" }, el("div", { class: "verdictbig green", text: "Cleared · 8/8 parts" }), el("div", { class: "sec", text: sig?.size ? "Sent to Executor · " + fmtUsd(sig.size) : "Sent to Analyst" }))
+      : el("div", { class: "card" }, el("div", { class: "verdictbig red", text: "Rejected · " + a.reason }), el("div", { class: "sec", text: "Grok Bot won't buy " + (c.name || c.symbol || "this coin") })));
+  }
+  s.append(auditToggle());
+  s.append(el("a", { class: "btn", href: coin_url(mint, "solana"), target: "_blank", rel: "noopener", text: "Open on FOMO" }));
+  // beam: 350ms per layer, then 150ms to colour; waits on a layer the server hasn't sent
+  if (!reduced && shown < 8 && !beamTimer) beamTimer = setTimeout(() => { beamTimer = null; const have = a.layers.length; if ((beamState[mint] ?? 0) < have) beamState[mint] = (beamState[mint] ?? 0) + 1; renderSheet(); }, 500);
+}
+let beamTimer = null;
+function auditToggle() {
+  const row = settingRow("auditor", "enabled", SETTINGS_SPEC.auditor.enabled);
+  return el("div", { class: "group", style: "margin:16px 0" }, row);
+}
+function openSearch() {
+  const s = $("#sheet"); s.hidden = false; sheetKind = "search";
+  const inp = el("input", { type: "search", placeholder: "Name, symbol or mint", autocapitalize: "off", autocomplete: "off", style: "background:var(--card2);border:0;border-radius:10px;min-height:44px;padding:0 12px;width:100%" });
+  const out = el("div", { class: "list" });
+  const run = () => { const q = inp.value.trim().toLowerCase(); out.replaceChildren(); if (!q) return;
+    const hits = Object.values(DB.coins).filter(c => c.mint.toLowerCase() === q || (c.name || "").toLowerCase().includes(q) || (c.symbol || "").toLowerCase().includes(q)).slice(0, 30);
+    if (!hits.length) out.append(el("div", { class: "li sec", text: q.length > 30 ? "Not seen tonight · open it anyway" : "No coin with that name tonight" }, q.length > 30 ? el("button", { class: "link", text: "Open", onclick: () => openCoin(inp.value.trim()) }) : null));
+    for (const c of hits) out.append(el("button", { class: "li", onclick: () => openCoin(c.mint) }, el("span", { class: "grow" }, el("div", { class: "t", text: c.name || shortAddr(c.mint) }), el("div", { class: "s", text: (c.symbol || "") + " · " + c.status + (c.reason ? " · " + c.reason : "") }))));
+  };
+  inp.oninput = run;
+  s.replaceChildren(sheetHead("Search"), inp, el("div", { style: "height:12px" }), out); inp.focus();
+}
+function openBell() {
+  const s = $("#sheet"); s.hidden = false; sheetKind = "bell";
+  const list = el("div", { class: "list" });
+  const ps = DB.pushes.slice().reverse();
+  if (!ps.length) list.append(el("div", { class: "li sec", text: "No alerts yet tonight" }));
+  for (const p of ps) list.append(el("div", { class: "li" }, el("span", { class: "grow" }, el("div", { class: "t", style: "white-space:pre-line", text: p.text }), el("div", { class: "s", text: timeStr(p.ts) })),
+    p.link ? el("a", { class: "link", href: p.link, target: "_blank", rel: "noopener", text: p.button || "Open on FOMO" }) : null));
+  for (const p of DB.pushes) p.read = true; saveDB();
+  s.replaceChildren(sheetHead("Alerts"), list);
+}
+function openReport(r) {
+  const s = $("#sheet"); s.hidden = false; sheetKind = "report";
+  const posRow = p => el("a", { class: "li", href: coin_url(p.mint, "solana"), target: "_blank", rel: "noopener" }, el("span", { class: "grow" }, el("div", { class: "t", text: p.name }), el("div", { class: "s", text: `${fmtPrice(p.entry)} → ${fmtPrice(p.exit)} · ${p.reason}` })), el("span", { class: "v " + (p.pnl >= 0 ? "green" : "red"), text: signUsd(p.pnl) + " · " + signPct(p.pct) }));
+  const sec = (t, kids) => [el("h2", { text: t }), el("div", { class: "list" }, kids.length ? kids : [el("div", { class: "li sec", text: "None" })])];
+  const kids = [sheetHead("Night report"),
+    r.layer8Killed ? el("div", { class: "errorrow", text: `Layer 8 was down: ${r.layer8Killed} coins turned red for it` }) : null,
+    el("div", { class: "card" }, el("div", { class: "kv" }, el("span", { text: "Night" }), el("span", { text: new Date(r.from).toLocaleString([], { weekday: "short", hour: "numeric", minute: "2-digit" }) + " · " + r.hours + "h" })),
+      el("div", { class: "kv" }, el("span", { text: "Balance" }), el("span", { text: fmtUsd(r.startBalance) + " → " + fmtUsd(r.endBalance) })),
+      el("div", { class: "kv" }, el("span", { text: "Coins seen" }), el("span", { text: String(r.seen) })),
+      el("div", { class: "kv" }, el("span", { text: "Fees paid" }), el("span", { text: fmtUsd(r.fees) })),
+      el("div", { class: "kv" }, el("span", { text: "Jev tokens" }), el("span", { text: r.jevTokens ? r.jevTokens + " · $" + (r.jevTokens * 0.042 / 1e6).toFixed(4) : "0 · rules mode" }))),
+    ...sec("Red trades", r.red.map(posRow)), ...sec("Green trades", r.green.map(posRow)),
+    ...sec("Scanner kills", Object.entries(r.kills).map(([k, n]) => el("div", { class: "li" }, el("span", { class: "grow", text: k }), el("span", { class: "v", text: String(n) })))),
+    ...sec("Auditor refusals", Object.entries(r.refusals).flatMap(([layer, arr]) => arr.map(x => el("a", { class: "li", href: coin_url(x.mint, "solana"), target: "_blank", rel: "noopener" }, el("span", { class: "grow" }, el("div", { class: "t", text: x.name }), el("div", { class: "s", text: layer + " · " + x.value })), el("span", { class: "v sec", text: timeStr(x.ts) }))))),
+    ...sec("Analyst rejects", r.analystRej.map(x => el("a", { class: "li", href: coin_url(x.mint, "solana"), target: "_blank", rel: "noopener" }, el("span", { class: "grow", text: x.name }), el("span", { class: "v sec", text: x.rule || "" })))),
+    el("p", { class: "sec" }, "New to FOMO? ", el("a", { class: "blue", href: SIGNUP_URL, target: "_blank", rel: "noopener", text: SIGNUP_URL })),
+  ];
+  s.replaceChildren(...kids.filter(Boolean));
+}
+
+// ---------- toasts ----------
+function toast(p) {
+  const box = $("#toasts"); if (!box) return;
+  const t = el("div", { class: "toast", role: "status" }, el("div", { class: "hd" }, el("span", { text: "Grok Bot · now" }), el("button", { "aria-label": "Dismiss", text: "✕", onclick: () => t.remove(), style: "min-width:28px" })),
+    el("div", { class: "tx", text: p.text }),
+    p.link ? el("div", { class: "acts" }, el("a", { class: p.kind === "sell" ? "sell" : "buy", href: p.link, target: "_blank", rel: "noopener", text: p.button || "Open on FOMO" }), el("button", { text: "Coin", onclick: () => { t.remove(); openCoin(p.mint); } })) : null);
+  box.prepend(t); setTimeout(() => t.remove(), p.link ? 12000 : 6000);
+  while (box.children.length > 3) box.lastChild.remove();
+}
+
+// ---------- commands (STEP 9) ----------
+function findCoins(x) {
+  const q = x.trim().toLowerCase(); if (!q) return [];
+  const exact = Object.values(DB.coins).filter(c => c.mint.toLowerCase() === q || (c.symbol || "").toLowerCase() === q || (c.name || "").toLowerCase() === q);
+  return exact.length ? exact : Object.values(DB.coins).filter(c => (c.name || "").toLowerCase().includes(q) || (c.symbol || "").toLowerCase().includes(q));
+}
+function coinLink(c) { return el("a", { href: coin_url(c.mint, "solana"), target: "_blank", rel: "noopener", text: (c.name || shortAddr(c.mint)) }); }
+function runCommand(raw) {
+  const t = raw.trim().replace(/^\//, ""), lo = t.toLowerCase(), out = [];
+  const line = (...k) => out.push(el("div", {}, ...k));
+  const one = (x, fn) => {
+    const hits = findCoins(x);
+    if (!hits.length) { if (x.trim().length > 30) return fn({ mint: x.trim(), name: shortAddr(x.trim()) }); line("I don't know " + x + " tonight. Send me its mint."); return; }
+    if (hits.length > 1) { line("Which one?"); for (const c of hits.slice(0, 8)) line("· ", coinLink(c), " " + (c.symbol || "")); return; }
+    fn(hits[0]);
+  };
+  let m;
+  if (!lo) return [el("div", { text: "Type a command." })];
+  if ((m = lo.match(/^buy (.+)/))) one(t.slice(4), c => {
+    const p = DB.pushes.find(x => x.mint === c.mint && x.kind === "buy");
+    if (p) { line(p.text); line(el("a", { href: p.link, target: "_blank", rel: "noopener", text: "[Buy on FOMO]" })); return; }
+    line("Taking apart " + (c.name || shortAddr(c.mint)) + "…");
+    const coin = DB.coins[c.mint] || (DB.coins[c.mint] = { mint: c.mint, migratedAt: Date.now(), seenAt: Date.now(), status: "manual" });
+    runAudit(coin, false).then(r => { const o = $("#cmdout"); if (!o) return; o.replaceChildren(...r.layers.map(l => el("div", { text: `${l.n} ${l.name}: ${l.value}` })), el("div", { text: "not sized, not on the desk" }), el("a", { href: coin_url(c.mint, "solana"), target: "_blank", rel: "noopener", text: "[Buy on FOMO]" })); });
+  });
+  else if ((m = lo.match(/^sell (.+)/))) one(t.slice(5), c => { const p = openPositions().find(x => x.mint === c.mint); if (!p) line("No open position in " + (c.name || c.mint)); else line(el("a", { href: coin_url(c.mint, "solana"), target: "_blank", rel: "noopener", text: "[Sell on FOMO] " + p.name })); });
+  else if ((m = lo.match(/^why (.+)/))) one(t.slice(4), c0 => { const c = DB.coins[c0.mint]; if (!c) return line("Never seen it.");
+    const who = c.status === "killed" ? "Scanner" : c.audit && !c.audit.passed ? "Auditor · layer " + (c.audit.layers.find(l => l.pass === false)?.n) : c.verdict && !c.verdict.passed ? "Analyst" : c.signal?.status === "skipped" ? "Executor" : null;
+    line(coinLink(c), " · " + (who ? who + " · " + (c.reason || "") : "not stopped · " + c.status), " · " + timeStr(c.audit?.ts || c.verdict?.ts || c.seenAt)); });
+  else if ((m = lo.match(/^(pause|resume) (\w+)/))) { const a = m[2]; if (!AGENTS.includes(a)) line("Agents: " + AGENTS.join(", ")); else { const r = setPaused(a, m[1] === "pause"); line(r.ok ? NAMES[a] + (m[1] === "pause" ? " paused" : " running") : r.error); } }
+  else if ((m = lo.match(/^set ([\w.]+) to (-?[\d.]+|\w+)%?$/))) {
+    let path = SETTING_ALIASES[m[1]] || m[1]; if (!path.includes(".")) { const g = Object.keys(SETTINGS_SPEC).find(g => m[1] in SETTINGS_SPEC[g]); path = g ? g + "." + m[1] : path; }
+    const [g, k] = path.split("."); let val = m[2]; if (/^-?[\d.]+$/.test(val)) val = String(Math.abs(Number(val)));
+    const r = setSetting(g, k, val, "command"); line(r.ok ? `${m[1]} ${fmtSet(g, k, r.old)} -> ${fmtSet(g, k, r.value)}` : "Refused · " + r.error);
+  }
+  else if (lo === "status") { line(S().desk.mode + " · balance " + fmtUsd(paperBalance())); const op = openPositions(); if (!op.length) line("No open positions"); for (const p of op) line(p.name + " · " + fmtUsd(p.size) + " ", el("a", { href: coin_url(p.mint, "solana"), target: "_blank", rel: "noopener", text: "[Sell on FOMO]" })); }
+  else if (lo === "paper") line("Already PAPER.");
+  else if (lo === "live") line("LIVE needs the PC desk and a full PAPER night.");
+  else if (lo === "invite") line(el("a", { href: SIGNUP_URL, target: "_blank", rel: "noopener", text: SIGNUP_URL }));
+  else if (lo === "report") { const r = DB.reports[DB.reports.length - 1]; if (r) { openReport(r); line("Opened the last report."); } else line("No report yet. End the night in Account to make one."); }
+  else if ((m = lo.match(/^stack (\d+)/))) line("Stack is for LIVE, which runs on the PC desk.");
+  else line("Commands: buy X · sell X · why X · pause Scanner · set stop to -8% · stack 1240 · status · paper | live · invite · report");
+  return out;
+}
+function fmtSet(g, k, v) { return (g === "risk" && k === "stop_pct") ? "-" + v + "%" : String(v); }
+
+// ---------- render loop ----------
+function render() {
+  if (tab === "home") renderHome(); else if (tab === "agents") renderAgents(); else if (tab === "activity") renderActivity(); else renderAccount();
+  renderSheet();
+}
+let renderQueued = false;
+function queueRender() { if (renderQueued) return; renderQueued = true; setTimeout(() => { renderQueued = false; if (tab === "account" && document.activeElement?.tagName === "INPUT") { renderSheet(); return; } render(); }, 400); }
+
+function boot() {
+  buildShell();
+  // loading state: blocks in the final layout
+  $("#home").append(el("div", { class: "skel", style: "height:52px" }), el("div", { class: "skel", style: "height:90px;margin-top:16px" }), el("div", { class: "skel", style: "height:220px;margin-top:16px" }));
+  startDesk();
+  onDesk((type, data) => {
+    if (type === "push") toast(data);
+    if (type === "audit_layer" && sheetKind === "audit" && sheetMint === data.mint) { renderSheet(); return; }
+    if (type === "audit_start") beamState[data.mint] = 0;
+    queueRender();
+  });
+  render();
+  setInterval(() => { if (tab === "home" || sheetKind === "coin") queueRender(); }, 15e3);
+  window.addEventListener("resize", queueRender);
+}
+document.addEventListener("DOMContentLoaded", boot);
+
+</script>
+</body>
+</html>
