@@ -119,7 +119,13 @@ async function getJSON(url,opts={},ms=20000){
   }catch(e){ throw new Error(e.name==="AbortError"?"timed out":(e.message==="Load failed"||e.message==="Failed to fetch"?"blocked from Safari (CORS)":e.message)); }
   finally{clearTimeout(t)}
 }
-const rpc=(method,params,ms)=>getJSON($("rpc").value.trim(),{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({jsonrpc:"2.0",id:1,method,params})},ms)
+function rpcUrl(){
+  let v=$("rpc").value.trim();
+  if(/^[0-9a-f-]{30,}$/i.test(v)) v="https://mainnet.helius-rpc.com/?api-key="+v;
+  return v;
+}
+function rpcLabel(){ const v=rpcUrl(); try{ const u=new URL(v); return u.host+(u.search||/[0-9a-f-]{30,}/i.test(u.pathname)?" (key hidden)":""); }catch{ return "not a URL"; } }
+const rpc=(method,params,ms)=>getJSON(rpcUrl(),{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({jsonrpc:"2.0",id:1,method,params})},ms)
   .then(j=>{ if(j.error) throw new Error(j.error.message||"RPC error"); return j; });
 
 function keyPaths(o,p="",out=new Set(),depth=0){
@@ -179,13 +185,25 @@ async function run(){
   ]);
 
   set("l8","wait","…");
-  try{
-    const filt=[{memcmp:{offset:0,bytes:mint}}];
-    const a=await rpc("getProgramAccounts",[TOKEN,{encoding:"jsonParsed",filters:[{dataSize:165},...filt]}],45000);
-    const b=await rpc("getProgramAccounts",[TOKEN22,{encoding:"jsonParsed",filters:filt}],45000);
-    const n=(a.result?.length||0)+(b.result?.length||0); raw.l8_count=n;
-    set("l8","ok",n+" token accounts");
-  }catch(e){ set("l8","bad",e.message+" · layer 8 needs another RPC"); }
+  const filt=[{memcmp:{offset:0,bytes:mint}}];
+  const prog=raw.acct?.result?.value?.owner||"?";
+  const cnt=r=>Array.isArray(r)?r.length:Array.isArray(r?.accounts)?r.accounts.length:Array.isArray(r?.value)?r.value.length:null;
+  const tries=[
+    ["T v1",()=>rpc("getProgramAccounts",[TOKEN,{encoding:"jsonParsed",filters:[{dataSize:165},...filt]}],45000)],
+    ["T22 v1",()=>rpc("getProgramAccounts",[TOKEN22,{encoding:"jsonParsed",filters:filt}],45000)],
+    ["T22 v2",()=>rpc("getProgramAccountsV2",[TOKEN22,{encoding:"jsonParsed",filters:filt,limit:1000}],45000)],
+    ["T22 base64",()=>rpc("getProgramAccounts",[TOKEN22,{encoding:"base64",dataSlice:{offset:0,length:0},filters:filt}],45000)],
+  ];
+  const out=[]; let best=0;
+  for(const [name,fn] of tries){
+    try{ const j=await fn(); const n=cnt(j.result); out.push(name+"="+(n===null?"?":n)); if(n>best) best=n; }
+    catch(e){ out.push(name+"="+e.message); }
+  }
+  const holders4=raw.largest?.result?.value?.length||0;
+  raw.l8_count=best;
+  const summary="program "+(prog===TOKEN22?"Token-2022":prog===TOKEN?"Token":prog.slice(0,6))+" · "+out.join(", ");
+  if(best>0) set("l8","ok",best+" accounts · "+summary);
+  else set("l8","bad","0 accounts but layer 4 saw "+holders4+" · "+summary);
   done();
 }
 
@@ -199,7 +217,7 @@ function done(){
 }
 
 $("copy").onclick=async()=>{
-  const lines=["GROK BOT PROOFS · "+new Date().toISOString(),"RPC: "+($("rpc").value.includes("api-key")?"custom (key hidden)":$("rpc").value),"Mint: "+$("mint").value,""];
+  const lines=["GROK BOT PROOFS · "+new Date().toISOString(),"RPC: "+rpcLabel(),"Mint: "+$("mint").value,""];
   for(const [k,src,what] of CHECKS){ const s=state[k]||{}; lines.push((s.st==="ok"?"PASS ":"FAIL ")+src+" · "+what+" · "+(s.val||"")); }
   lines.push("",$("keys").textContent);
   const txt=lines.join("\n");
