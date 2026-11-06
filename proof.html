@@ -1,0 +1,213 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black">
+<title>Grok Bot Proofs</title>
+<style>
+:root{
+  --bg:#000;--card:#1c1c1e;--card2:#2c2c2e;--fg:#fff;
+  --fg2:rgba(235,235,245,.6);--fg3:rgba(235,235,245,.3);--sep:rgba(84,84,88,.55);
+  --green:#00d35a;--red:#ff453a;--orange:#ff9f0a;--cyan:#64d2ff;--blue:#0a84ff;
+  --text:-apple-system,"SF Pro Text",system-ui,sans-serif;
+  --display:-apple-system,"SF Pro Display",system-ui,sans-serif;
+  --mono:ui-monospace,"SF Mono",Menlo,monospace;
+  color-scheme:dark;
+}
+*{box-sizing:border-box}
+html,body{margin:0;background:var(--bg);color:var(--fg);font:15px/1.4 var(--text);font-variant-numeric:tabular-nums}
+main{padding:calc(env(safe-area-inset-top,0px) + 16px) max(16px,env(safe-area-inset-right,0px)) calc(env(safe-area-inset-bottom,0px) + 32px) max(16px,env(safe-area-inset-left,0px));max-width:640px;margin:0 auto;display:flex;flex-direction:column;gap:20px}
+h1{font:700 34px/1.1 var(--display);margin:8px 0 0}
+.sub{color:var(--fg2);margin:4px 0 0}
+.group{background:var(--card);border-radius:14px;overflow:hidden}
+.label{color:var(--fg2);font-size:13px;margin:0 0 6px 16px}
+.row{display:flex;gap:12px;align-items:center;padding:12px 16px;min-height:52px}
+.row+.row{border-top:.5px solid var(--sep)}
+.row .name{flex:1;min-width:0}
+.row .name b{font-weight:600;display:block}
+.row .name small{color:var(--fg2);font-size:13px;display:block;overflow-wrap:anywhere}
+.dot{width:10px;height:10px;border-radius:50%;background:var(--fg3);flex:none}
+.ok .dot{background:var(--green)} .bad .dot{background:var(--red)} .wait .dot{background:var(--orange);animation:p 1.2s infinite}
+@keyframes p{50%{opacity:.4}}
+@media (prefers-reduced-motion:reduce){.wait .dot{animation:none}}
+.val{font:13px var(--mono);color:var(--fg2);text-align:right;max-width:45%;overflow-wrap:anywhere}
+input{width:100%;background:var(--card2);color:var(--fg);border:0;border-radius:10px;padding:12px;font:14px var(--mono);min-height:44px}
+input:focus-visible,button:focus-visible{outline:2px solid var(--blue);outline-offset:2px}
+.field{display:flex;flex-direction:column;gap:6px;padding:12px 16px}
+.field+.field{border-top:.5px solid var(--sep)}
+.field span{color:var(--fg2);font-size:13px}
+button{appearance:none;border:0;border-radius:14px;min-height:50px;font:600 17px var(--text);background:var(--blue);color:#fff;width:100%}
+button.sec{background:var(--card2)}
+button:disabled{opacity:.4}
+pre{margin:0;padding:12px 16px;font:12px/1.45 var(--mono);color:var(--fg2);white-space:pre-wrap;overflow-wrap:anywhere;max-height:320px;overflow:auto}
+.note{color:var(--fg2);font-size:13px;margin:0 16px}
+.stack{display:flex;flex-direction:column;gap:10px}
+</style>
+</head>
+<body>
+<main>
+  <header>
+    <h1>Proofs</h1>
+    <p class="sub">Step 2 checks, run from this phone. Nothing here trades or touches FOMO.</p>
+  </header>
+
+  <section>
+    <p class="label">Settings</p>
+    <div class="group">
+      <label class="field"><span>Solana RPC URL</span><input id="rpc" value="https://api.mainnet-beta.solana.com" autocomplete="off" autocapitalize="off" spellcheck="false"></label>
+      <label class="field"><span>Test mint (optional, filled by the first graduation)</span><input id="mint" placeholder="waits for PumpPortal" autocomplete="off" autocapitalize="off" spellcheck="false"></label>
+    </div>
+  </section>
+
+  <div class="stack">
+    <button id="run" type="button">Run proofs</button>
+    <p class="note">Leave the screen on. Waiting for a graduation can take a few minutes.</p>
+  </div>
+
+  <section>
+    <p class="label">Results</p>
+    <div class="group" id="results"></div>
+  </section>
+
+  <section>
+    <p class="label">Keys found in each response (for fields.py)</p>
+    <div class="group"><pre id="keys">Run the proofs first.</pre></div>
+  </section>
+
+  <div class="stack">
+    <button id="copy" type="button" class="sec" disabled>Copy report for Claude</button>
+    <p class="note" id="copied"></p>
+  </div>
+</main>
+
+<script>
+const CHECKS = [
+  ["ws","PumpPortal","Live graduation stream"],
+  ["slot","Solana RPC","getSlot"],
+  ["dex","DexScreener","Pair for the test mint"],
+  ["rc","RugCheck","Report"],
+  ["graph","RugCheck","Insiders graph"],
+  ["acct","Solana RPC","getAccountInfo (layers 1 and 2)"],
+  ["largest","Solana RPC","getTokenLargestAccounts (layer 4)"],
+  ["l8","Layer 8 proof","getProgramAccounts, Token + Token-2022"],
+];
+const TOKEN="TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA";
+const TOKEN22="TokenzQdBNbLqP5VEhdkAS6EPFLC8bnhMVfKS3Nm7bc";
+const state={}; const raw={};
+const $=id=>document.getElementById(id);
+
+function render(){
+  $("results").innerHTML="";
+  for(const [k,src,what] of CHECKS){
+    const s=state[k]||{st:"",val:"not run"};
+    const r=document.createElement("div"); r.className="row "+s.st;
+    r.innerHTML='<span class="dot"></span><span class="name"><b></b><small></small></span><span class="val"></span>';
+    r.querySelector("b").textContent=src; r.querySelector("small").textContent=what;
+    r.querySelector(".val").textContent=s.val; $("results").appendChild(r);
+  }
+}
+const set=(k,st,val)=>{state[k]={st,val};render();};
+
+async function getJSON(url,opts={},ms=20000){
+  const c=new AbortController(); const t=setTimeout(()=>c.abort(),ms);
+  try{ const r=await fetch(url,{...opts,signal:c.signal});
+    const txt=await r.text(); let j; try{j=JSON.parse(txt)}catch{j=txt}
+    if(!r.ok) throw new Error("HTTP "+r.status);
+    return j;
+  }catch(e){ throw new Error(e.name==="AbortError"?"timed out":(e.message==="Load failed"||e.message==="Failed to fetch"?"blocked from Safari (CORS)":e.message)); }
+  finally{clearTimeout(t)}
+}
+const rpc=(method,params,ms)=>getJSON($("rpc").value.trim(),{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({jsonrpc:"2.0",id:1,method,params})},ms)
+  .then(j=>{ if(j.error) throw new Error(j.error.message||"RPC error"); return j; });
+
+function keyPaths(o,p="",out=new Set(),depth=0){
+  if(depth>6||o===null||typeof o!=="object") return out;
+  if(Array.isArray(o)){ if(o.length) keyPaths(o[0],p+"[0]",out,depth+1); return out; }
+  for(const k of Object.keys(o)){ const np=p?p+"."+k:k; out.add(np); keyPaths(o[k],np,out,depth+1); }
+  return out;
+}
+
+function waitForGraduation(ms=600000){
+  return new Promise((res,rej)=>{
+    let ws; try{ ws=new WebSocket("wss://pumpportal.fun/api/data"); }catch(e){ return rej(new Error("could not open")); }
+    const t=setTimeout(()=>{ws.close();rej(new Error("no graduation in 10 min"))},ms);
+    ws.onopen=()=>{ ws.send(JSON.stringify({method:"subscribeMigration"})); set("ws","wait","connected, waiting"); };
+    ws.onerror=()=>{clearTimeout(t);rej(new Error("blocked or refused"))};
+    ws.onmessage=ev=>{ let m; try{m=JSON.parse(ev.data)}catch{return}
+      const mint=m.mint||m.tokenAddress||m.token;
+      if(!mint){ raw.ws_first=m; return; }
+      raw.ws=m; clearTimeout(t); ws.close(); res(mint); };
+  });
+}
+
+async function run(){
+  $("run").disabled=true; $("copy").disabled=true;
+  for(const [k] of CHECKS) delete state[k]; render();
+  let mint=$("mint").value.trim();
+
+  try{ set("slot","wait","…"); const j=await rpc("getSlot",[]); raw.slot=j; set("slot","ok","slot "+j.result); }
+  catch(e){ set("slot","bad",e.message); }
+
+  if(!mint){
+    set("ws","wait","connecting");
+    try{ mint=await waitForGraduation(); $("mint").value=mint; set("ws","ok",mint.slice(0,4)+"…"+mint.slice(-4)); }
+    catch(e){ set("ws","bad",e.message); }
+  } else {
+    set("ws","wait","checking");
+    try{ const w=new WebSocket("wss://pumpportal.fun/api/data");
+      await new Promise((r,j)=>{w.onopen=r;w.onerror=()=>j(new Error("blocked or refused"));setTimeout(()=>j(new Error("timed out")),15000)});
+      w.close(); set("ws","ok","connects (used your mint)");
+    }catch(e){ set("ws","bad",e.message); }
+  }
+  if(!mint){ for(const k of ["dex","rc","graph","acct","largest","l8"]) set(k,"bad","no test mint"); return done(); }
+
+  await Promise.all([
+    (async()=>{ set("dex","wait","…"); try{ const j=await getJSON("https://api.dexscreener.com/tokens/v1/solana/"+mint); raw.dex=j;
+        const p=Array.isArray(j)?j:[]; const ps=p.filter(x=>x.dexId==="pumpswap"); set("dex","ok",p.length+" pairs, "+ps.length+" pumpswap"); }
+      catch(e){ set("dex","bad",e.message); } })(),
+    (async()=>{ set("rc","wait","…"); try{ const j=await getJSON("https://api.rugcheck.xyz/v1/tokens/"+mint+"/report"); raw.rugcheck=j; set("rc","ok","report received"); }
+      catch(e){ set("rc","bad",e.message); } })(),
+    (async()=>{ set("graph","wait","…"); try{ const j=await getJSON("https://api.rugcheck.xyz/v1/tokens/"+mint+"/insiders/graph"); raw.graph=j; set("graph","ok","graph received"); }
+      catch(e){ set("graph","bad",e.message); } })(),
+    (async()=>{ set("acct","wait","…"); try{ const j=await rpc("getAccountInfo",[mint,{encoding:"jsonParsed"}]); raw.acct=j;
+        const info=j.result?.value?.data?.parsed?.info||{}; set("acct","ok","mint auth "+(info.mintAuthority===null?"revoked":"set")+", freeze "+(info.freezeAuthority===null?"revoked":"set")); }
+      catch(e){ set("acct","bad",e.message); } })(),
+    (async()=>{ set("largest","wait","…"); try{ const j=await rpc("getTokenLargestAccounts",[mint]); raw.largest=j; set("largest","ok",(j.result?.value?.length||0)+" accounts"); }
+      catch(e){ set("largest","bad",e.message); } })(),
+  ]);
+
+  set("l8","wait","…");
+  try{
+    const filt=[{memcmp:{offset:0,bytes:mint}}];
+    const a=await rpc("getProgramAccounts",[TOKEN,{encoding:"jsonParsed",filters:[{dataSize:165},...filt]}],45000);
+    const b=await rpc("getProgramAccounts",[TOKEN22,{encoding:"jsonParsed",filters:filt}],45000);
+    const n=(a.result?.length||0)+(b.result?.length||0); raw.l8_count=n;
+    set("l8","ok",n+" token accounts");
+  }catch(e){ set("l8","bad",e.message+" · layer 8 needs another RPC"); }
+  done();
+}
+
+function done(){
+  const parts=[];
+  for(const [name,obj] of Object.entries({migration:raw.ws,dexscreener:raw.dex,rugcheck_report:raw.rugcheck,rugcheck_graph:raw.graph,getAccountInfo:raw.acct})){
+    parts.push("## "+name+"\n"+(obj?[...keyPaths(obj)].join("\n"):"(no response)"));
+  }
+  $("keys").textContent=parts.join("\n\n");
+  $("run").disabled=false; $("copy").disabled=false;
+}
+
+$("copy").onclick=async()=>{
+  const lines=["GROK BOT PROOFS · "+new Date().toISOString(),"RPC: "+($("rpc").value.includes("api-key")?"custom (key hidden)":$("rpc").value),"Mint: "+$("mint").value,""];
+  for(const [k,src,what] of CHECKS){ const s=state[k]||{}; lines.push((s.st==="ok"?"PASS ":"FAIL ")+src+" · "+what+" · "+(s.val||"")); }
+  lines.push("",$("keys").textContent);
+  const txt=lines.join("\n");
+  try{ await navigator.clipboard.writeText(txt); $("copied").textContent="Copied. Paste it into the chat."; }
+  catch{ $("copied").textContent="Copy failed. Screenshot the Results instead."; }
+};
+$("run").onclick=run;
+render();
+</script>
+</body>
+</html>
