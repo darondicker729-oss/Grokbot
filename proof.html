@@ -58,10 +58,12 @@ pre{margin:0;padding:12px 16px;font:12px/1.45 var(--mono);color:var(--fg2);white
     <div class="group">
       <label class="field"><span>Solana RPC URL</span><input id="rpc" value="https://api.mainnet-beta.solana.com" autocomplete="off" autocapitalize="off" spellcheck="false"></label>
       <label class="field"><span>Test mint (optional, filled by the first graduation)</span><input id="mint" placeholder="waits for PumpPortal" autocomplete="off" autocapitalize="off" spellcheck="false"></label>
+      <label class="field"><span>Jev key (stays on this phone, never in the report)</span><input id="jev" type="password" placeholder="apikey_…" autocomplete="off" autocapitalize="off" spellcheck="false"></label>
     </div>
   </section>
 
   <div class="stack">
+    <button id="jevbtn" type="button" class="sec">Test Jev only</button>
     <button id="run" type="button">Run proofs</button>
     <p class="note">Leave the screen on. Waiting for a graduation can take a few minutes.</p>
   </div>
@@ -92,7 +94,24 @@ const CHECKS = [
   ["acct","Solana RPC","getAccountInfo (layers 1 and 2)"],
   ["largest","Solana RPC","getTokenLargestAccounts (layer 4)"],
   ["l8","Layer 8 proof","getProgramAccounts, Token + Token-2022"],
+  ["jev","Jev","1 test noul question"],
 ];
+async function testJev(){
+  const key=$("jev").value.trim();
+  if(!key){ set("jev","","skipped (no key)"); return; }
+  set("jev","wait","…");
+  try{
+    const j=await getJSON("https://api.typesafe.ai/v1/systemone",{method:"POST",
+      headers:{"Content-Type":"application/json","Authorization":"Bearer "+key},
+      body:JSON.stringify({model:"jev-latest",
+        state:"Coin TEST on Solana, graduated 15 min ago. Liquidity $52000. Last 1h: 180 buys, 90 sells, volume $41000, price +12%.",
+        questions:{alive_6h:{type:"noul",instructions:"This coin is still actively traded 6 hours from now"}}})},20000);
+    const n=j?.answers?.alive_6h?.noul;
+    raw.jev={model:j?.model,usage:j?.usage,noul:n};
+    if(typeof n==="number"&&n>=0&&n<=1) set("jev","ok","alive_6h="+n.toFixed(2)+" · "+(j.model||"?")+" · usage "+JSON.stringify(j.usage||{}));
+    else set("jev","bad","bad answer: "+JSON.stringify(j).slice(0,120));
+  }catch(e){ set("jev","bad",e.message); }
+}
 const TOKEN="TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA";
 const TOKEN22="TokenzQdBNbLqP5VEhdkAS6EPFLC8bnhMVfKS3Nm7bc";
 const state={}; const raw={};
@@ -226,6 +245,7 @@ async function run(){
   const summary="program "+(prog===TOKEN22?"Token-2022":prog===TOKEN?"Token":prog.slice(0,6))+" · "+out.join(", ");
   if(best>0) set("l8","ok",best+" accounts · "+summary);
   else set("l8","bad","0 accounts but layer 4 saw "+holders4+" · "+summary);
+  await testJev();
   done();
 }
 
@@ -246,8 +266,10 @@ $("copy").onclick=async()=>{
   try{ await navigator.clipboard.writeText(txt); $("copied").textContent="Copied. Paste it into the chat."; }
   catch{ $("copied").textContent="Copy failed. Screenshot the Results instead."; }
 };
-try{ const s=localStorage.getItem("gb_rpc"); if(s) $("rpc").value=s; }catch{}
-$("run").onclick=()=>{ try{ localStorage.setItem("gb_rpc",$("rpc").value.trim()); }catch{} run(); };
+try{ const s=localStorage.getItem("gb_rpc"); if(s) $("rpc").value=s; const k=localStorage.getItem("gb_jev"); if(k) $("jev").value=k; }catch{}
+const saveFields=()=>{ try{ localStorage.setItem("gb_rpc",$("rpc").value.trim()); localStorage.setItem("gb_jev",$("jev").value.trim()); }catch{} };
+$("run").onclick=()=>{ saveFields(); run(); };
+$("jevbtn").onclick=async()=>{ saveFields(); $("jevbtn").disabled=true; await testJev(); $("jevbtn").disabled=false; $("copy").disabled=false; };
 render();
 </script>
 </body>
